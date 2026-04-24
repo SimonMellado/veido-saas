@@ -1,0 +1,72 @@
+body {
+  background: #0b0b0f;
+  color: #ff0033;
+  font-family: "Arial", sans-serif;
+}
+
+.app {
+  display: flex;
+}
+
+.sidebar {
+  width: 200px;
+  background: #020617;
+  padding: 20px;
+}
+
+.main {
+  flex: 1;
+  padding: 20px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.card {
+  background: #1e293b;
+  padding: 15px;
+  border-radius: 10px;
+}
+
+.panel {
+  margin-top: 20px;
+}
+
+.setting {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+button {
+  background: #ff0033;
+  color: white;
+  border: none;
+  padding: 10px;
+  transition: 0.3s;
+}
+
+.messages {
+  margin-top: 20px;
+}
+
+.message {
+  background: #1e293b;
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+}
+
+.login {
+  text-align: center;
+  margin-top: 100px;
+}
+
+button:hover {
+  background: black;
+  border: 1px solid #ff0033;
+  color: #ff0033;
+}
