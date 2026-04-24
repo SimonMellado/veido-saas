@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const API = "https://veido-saas.onrender.com";
+const API = process.env.REACT_APP_API;
 
 function Dashboard() {
   const [guilds, setGuilds] = useState([]);

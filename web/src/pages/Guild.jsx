@@ -1,7 +1,7 @@
 import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 
-const API = "https://veido-saas.onrender.com";
+const API = process.env.REACT_APP_API;
 
 function Guild() {
   const { id } = useParams();
@@ -12,7 +12,7 @@ function Guild() {
       credentials: "include"
     })
       .then(res => res.json())
-      .then(data => setConfig(data))
+      .then(setConfig)
       .catch(() => setConfig(null));
   }, [id]);
 
@@ -20,17 +20,12 @@ function Guild() {
 
   return (
     <div style={{ padding: 20 }}>
-      <h1>Servidor: {config.name}</h1>
+      <h1>{config.name}</h1>
 
       <p>ID: {config.guildId}</p>
 
-      <p>
-        Levels: {config.modules?.levels ? "ON" : "OFF"}
-      </p>
-
-      <p>
-        Welcome: {config.modules?.welcome ? "ON" : "OFF"}
-      </p>
+      <p>Levels: {config.modules?.levels ? "ON" : "OFF"}</p>
+      <p>Welcome: {config.modules?.welcome ? "ON" : "OFF"}</p>
     </div>
   );
 }

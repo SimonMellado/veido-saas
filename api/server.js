@@ -6,26 +6,35 @@ const session = require("express-session");
 
 const app = express();
 
-app.set("trust proxy", 1); // 🔥 IMPORTANTE PARA RENDER
+/* =========================
+   TRUST PROXY (RENDER FIX)
+========================= */
+app.set("trust proxy", 1);
+
+/* =========================
+   MIDDLEWARES
+========================= */
+app.use(express.json());
 
 app.use(cors({
   origin: process.env.CLIENT_URL,
   credentials: true
 }));
 
-app.use(express.json());
-
 app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: true,
-    sameSite: "none"
+    secure: true,        // HTTPS (Render)
+    sameSite: "none",    // cross-site (Vercel ↔ Render)
+    httpOnly: true
   }
 }));
 
-// 🟢 LOGIN DISCORD
+/* =========================
+   DISCORD LOGIN
+========================= */
 app.get("/auth/login", (req, res) => {
   const url =
     `https://discord.com/api/oauth2/authorize` +
@@ -37,12 +46,17 @@ app.get("/auth/login", (req, res) => {
   res.redirect(url);
 });
 
-// 🟢 CALLBACK OAUTH
+/* =========================
+   DISCORD CALLBACK
+========================= */
 app.get("/auth/discord/callback", async (req, res) => {
   try {
     const code = req.query.code;
 
-    const token = await axios.post(
+    if (!code) return res.status(400).send("No code provided");
+
+    // GET TOKEN
+    const tokenRes = await axios.post(
       "https://discord.com/api/oauth2/token",
       new URLSearchParams({
         client_id: process.env.CLIENT_ID,
@@ -58,37 +72,63 @@ app.get("/auth/discord/callback", async (req, res) => {
       }
     );
 
-    const user = await axios.get("https://discord.com/api/users/@me", {
-      headers: {
-        Authorization: `Bearer ${token.data.access_token}`
+    const access_token = tokenRes.data.access_token;
+
+    // GET USER
+    const userRes = await axios.get(
+      "https://discord.com/api/users/@me",
+      {
+        headers: {
+          Authorization: `Bearer ${access_token}`
+        }
       }
-    });
+    );
 
-    req.session.user = user.data;
+    // SAVE SESSION
+    req.session.user = userRes.data;
 
-    return res.redirect(process.env.CLIENT_URL);
+    // REDIRECT FRONTEND
+    res.redirect(process.env.CLIENT_URL);
 
   } catch (err) {
-    console.log("OAuth error:", err.response?.data || err.message);
-    return res.status(500).send("OAuth failed");
+    console.error("OAuth Error:", err.message);
+    res.status(500).send("OAuth error");
   }
 });
 
-// 🟢 USER
+/* =========================
+   USER SESSION
+========================= */
 app.get("/user", (req, res) => {
   res.json(req.session.user || null);
 });
 
-// 🟢 GUILDS (ejemplo básico)
+/* =========================
+   GUILDS (PLACEHOLDER)
+========================= */
 app.get("/guilds", (req, res) => {
   if (!req.session.user) return res.json([]);
-  res.json([]);
+
+  res.json([
+    { id: "1", name: "Servidor Demo 1" },
+    { id: "2", name: "Servidor Demo 2" }
+  ]);
 });
 
-// 🟢 HOME CHECK
+/* =========================
+   HEALTH CHECK
+========================= */
 app.get("/", (req, res) => {
-  res.json({ status: "API running 🚀" });
+  res.json({
+    status: "Veido API running 🚀"
+  });
 });
 
+/* =========================
+   START SERVER
+========================= */
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log("API running on", PORT));
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
