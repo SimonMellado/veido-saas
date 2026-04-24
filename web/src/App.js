@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const API = "https://veido-saas.onrender.com";
+const API = process.env.REACT_APP_API || "https://veido-saas.onrender.com";
 
 function App() {
   const [user, setUser] = useState(null);
@@ -10,11 +10,12 @@ function App() {
       credentials: "include"
     })
       .then(res => res.json())
-      .then(setUser);
+      .then(setUser)
+      .catch(() => setUser(null));
   }, []);
 
   const login = () => {
-    window.location.href = "https://veido-saas.onrender.com/auth/login";
+    window.location.href = `${API}/auth/login`;
   };
 
   if (!user) {

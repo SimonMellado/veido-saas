@@ -1,8 +1,7 @@
 function Login() {
-  const API = process.env.REACT_APP_API_URL;
+  const API = "https://veido-saas.onrender.com";
 
-  const login = () => {
-    window.location.href = `${API}/auth/login`;
+  window.location.href = `${API}/auth/login`;
   };
 
   return (
@@ -11,6 +10,5 @@ function Login() {
       <button onClick={login}>Login con Discord</button>
     </div>
   );
-}
 
 export default Login;
