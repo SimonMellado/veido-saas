@@ -1,47 +1,36 @@
 import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 
+const API = "https://veido-saas.onrender.com";
+
 function Guild() {
   const { id } = useParams();
   const [config, setConfig] = useState(null);
 
   useEffect(() => {
-    fetch(`http://localhost:3001/guild/${id}`)
+    fetch(`${API}/guild/${id}`, {
+      credentials: "include"
+    })
       .then(res => res.json())
-      .then(setConfig);
+      .then(data => setConfig(data))
+      .catch(() => setConfig(null));
   }, [id]);
-
-  const toggleLevels = async () => {
-    const res = await fetch(
-      `http://localhost:3001/guild/${id}/levels`,
-      { method: "POST" }
-    );
-
-    const data = await res.json();
-    setConfig(data);
-  };
-
-  const toggleWelcome = async () => {
-    const res = await fetch(
-      `http://localhost:3001/guild/${id}/welcome`,
-      { method: "POST" }
-    );
-
-    const data = await res.json();
-    setConfig(data);
-  };
 
   if (!config) return <p>Cargando...</p>;
 
   return (
-    <div>
+    <div style={{ padding: 20 }}>
       <h1>Servidor: {config.name}</h1>
 
-      <p>Levels: {config.modules.levels ? "ON" : "OFF"}</p>
-      <button onClick={toggleLevels}>Toggle Levels</button>
+      <p>ID: {config.guildId}</p>
 
-      <p>Welcome: {config.modules.welcome ? "ON" : "OFF"}</p>
-      <button onClick={toggleWelcome}>Toggle Welcome</button>
+      <p>
+        Levels: {config.modules?.levels ? "ON" : "OFF"}
+      </p>
+
+      <p>
+        Welcome: {config.modules?.welcome ? "ON" : "OFF"}
+      </p>
     </div>
   );
 }

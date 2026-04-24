@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const API = process.env.REACT_APP_API || "https://veido-saas.onrender.com";
+const API = "https://veido-saas.onrender.com";
 
 function App() {
   const [user, setUser] = useState(null);
@@ -10,8 +10,7 @@ function App() {
       credentials: "include"
     })
       .then(res => res.json())
-      .then(setUser)
-      .catch(() => setUser(null));
+      .then(setUser);
   }, []);
 
   const login = () => {
