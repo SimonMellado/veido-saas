@@ -57,4 +57,16 @@ app.get("/user", (req, res) => {
   res.json(req.session.user || null);
 });
 
+app.get("/", (req, res) => {
+  res.json({
+    status: "Veido API running 🚀",
+    login: "/auth/login",
+    user: "/user"
+  });
+});
+
+app.get("/health", (req, res) => {
+  res.send("OK");
+});
+
 app.listen(3001, () => console.log("API running"));
