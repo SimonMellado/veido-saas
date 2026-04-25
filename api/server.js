@@ -58,18 +58,21 @@ app.get("/auth/discord/callback", async (req, res) => {
       }
     );
 
-    const user = await axios.get("https://discord.com/api/users/@me", {
-      headers: {
-        Authorization: `Bearer ${token.data.access_token}`
+    const user = await axios.get(
+      "https://discord.com/api/users/@me",
+      {
+        headers: {
+          Authorization: `Bearer ${token.data.access_token}`
+        }
       }
-    });
+    );
 
     req.session.user = user.data;
 
     res.redirect(process.env.CLIENT_URL);
 
   } catch (err) {
-    console.log("OAuth error:", err.message);
+    console.log("🔥 ERROR COMPLETO:", err.response?.data || err.message);
     res.status(500).send("OAuth error");
   }
 });
