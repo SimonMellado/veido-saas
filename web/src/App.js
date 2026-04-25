@@ -6,6 +6,11 @@ function App() {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
+    if (!API) {
+      console.error("❌ REACT_APP_API no está definida");
+      return;
+    }
+
     fetch(`${API}/user`, {
       credentials: "include"
     })
@@ -15,6 +20,11 @@ function App() {
   }, []);
 
   const login = () => {
+    if (!API) {
+      alert("API no configurada");
+      return;
+    }
+
     window.location.href = `${API}/auth/login`;
   };
 
@@ -31,3 +41,5 @@ function App() {
 }
 
 export default App;
+
+console.log("API ACTUAL:", API);

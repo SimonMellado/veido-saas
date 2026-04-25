@@ -2,14 +2,12 @@ import { useEffect, useState } from "react";
 
 const API = process.env.REACT_APP_API;
 
-fetch(`${API}/guilds`, {
-  credentials: "include"
-});
-
 function Dashboard() {
   const [guilds, setGuilds] = useState([]);
 
   useEffect(() => {
+    if (!API) return;
+
     fetch(`${API}/guilds`, {
       credentials: "include"
     })
