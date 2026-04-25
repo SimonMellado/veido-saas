@@ -10,7 +10,8 @@ function App() {
       credentials: "include"
     })
       .then(res => res.json())
-      .then(setUser);
+      .then(setUser)
+      .catch(() => setUser(null));
   }, []);
 
   const login = () => {

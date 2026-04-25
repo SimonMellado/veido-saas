@@ -1,8 +1,8 @@
 import { useState } from "react";
 
-function Login() {
-  const API = process.env.REACT_APP_API || "https://veido-saas.onrender.com";
+const API = process.env.REACT_APP_API;
 
+function Login() {
   const login = () => {
     window.location.href = `${API}/auth/login`;
   };

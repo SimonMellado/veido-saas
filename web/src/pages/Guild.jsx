@@ -3,6 +3,10 @@ import { useEffect, useState } from "react";
 
 const API = process.env.REACT_APP_API;
 
+fetch(`${API}/guilds`, {
+  credentials: "include"
+});
+
 function Guild() {
   const { id } = useParams();
   const [config, setConfig] = useState(null);
