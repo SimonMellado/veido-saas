@@ -19,13 +19,12 @@ function App() {
     }
 
     try {
-      console.log("🔍 Verificando sesión...");
+      // Usamos 'include' para enviar la cookie de sesión desde Vercel
       const res = await fetch(`${API}/user`, { credentials: "include" });
       
       if (res.ok) {
         const data = await res.json();
-        if (data && data.id) {
-          console.log("✅ Usuario autenticado:", data.username);
+        if (data?.id) {
           setUser(data);
         } else {
           setUser(null);
@@ -45,7 +44,7 @@ function App() {
     fetchUser();
   }, [fetchUser]);
 
-  // Si está cargando, mostramos el spinner. NO redirigimos.
+  // Pantalla de carga mientras se verifica la sesión en la API
   if (loading) {
     return (
       <div style={{ 
@@ -63,11 +62,13 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Si ya hay usuario, al ir a /login enviamos al dashboard */}
         <Route 
           path="/login" 
           element={user ? <Navigate to="/dashboard" replace /> : <Login fetchUser={fetchUser} />} 
         />
         
+        {/* Rutas protegidas: Si no hay usuario, enviar a /login */}
         <Route 
           path="/dashboard" 
           element={user ? <Dashboard user={user} setUser={setUser} /> : <Navigate to="/login" replace />} 
@@ -78,9 +79,14 @@ function App() {
           element={user ? <Guild user={user} /> : <Navigate to="/login" replace />} 
         />
         
-        {/* Lógica de navegación segura: Si entra a la raíz, decidimos según el estado final */}
-        <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
-        <Route path="*" element={user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
+        {/* RUTA RAIZ: Decidir dinámicamente según estado de autenticación */}
+        <Route 
+          path="/" 
+          element={user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} 
+        />
+
+        {/* Catch-all */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );
