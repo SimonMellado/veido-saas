@@ -1,4 +1,4 @@
-const { loadCommands } = require("../../Handlers/commandHandler");
+const { loadCommands } = require("../../Events/Handlers/commandHandler");
 
 module.exports = {
   name: "ready",

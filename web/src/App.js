@@ -1,83 +1,70 @@
 import { useEffect, useState } from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import "./App.css";
+import Login from "./pages/Login";
+import Dashboard from "./pages/Dashboard";
+import Guild from "./pages/Guild";
 
 const API = process.env.REACT_APP_API;
 
 function App() {
-  const [user, setUser] = useState(null);
-  const [guilds, setGuilds] = useState([]);
-  const [messages, setMessages] = useState([]);
+  const [user, setUser] = useState(undefined); // undefined = cargando, null = no autenticado
 
-  // LOGIN
-  const login = () => {
-    window.location.href = `${API}/auth/login`;
-  };
-
-  // USER + GUILDS
   useEffect(() => {
-    const load = async () => {
-      try {
-        const resUser = await fetch(`${API}/user`, {
-          credentials: "include"
-        });
+    if (!API) {
+      console.error("REACT_APP_API no está definida en .env");
+      setUser(null);
+      return;
+    }
 
-        const userData = await resUser.json();
-        setUser(userData);
-
-        if (userData?.username) {
-          const resGuilds = await fetch(`${API}/guilds`, {
-            credentials: "include"
-          });
-
-          const guildData = await resGuilds.json();
-          setGuilds(guildData || []);
-        }
-      } catch (err) {
-        console.error("Error:", err);
-      }
-    };
-
-    load();
+    fetch(`${API}/user`, { credentials: "include" })
+      .then(res => res.json())
+      .then(data => setUser(data || null))
+      .catch(() => setUser(null));
   }, []);
 
-  // MESSAGES (FIX)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetch(`${API}/messages`)
-        .then(res => res.json())
-        .then(setMessages)
-        .catch(() => {});
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  if (!user) {
+  // Pantalla de carga inicial
+  if (user === undefined) {
     return (
-      <div>
-        <h1>Veido Dashboard</h1>
-        <button onClick={login}>Login Discord</button>
+      <div className="loading-screen">
+        <div className="loading-spinner" />
       </div>
     );
   }
 
   return (
-    <div>
-      <h1>Hola {user.username}</h1>
+    <BrowserRouter>
+      <Routes>
+        {/* Si no hay usuario, siempre va a login */}
+        <Route
+          path="/login"
+          element={!user ? <Login /> : <Navigate to="/dashboard" replace />}
+        />
 
-      <h2>Servidores</h2>
-      {guilds.map(g => (
-        <p key={g.id}>{g.name}</p>
-      ))}
+        {/* Rutas protegidas */}
+        <Route
+          path="/dashboard"
+          element={user ? <Dashboard user={user} /> : <Navigate to="/login" replace />}
+        />
+        <Route
+          path="/guild/:id"
+          element={user ? <Guild /> : <Navigate to="/login" replace />}
+        />
 
-      <h2>Actividad</h2>
-      {messages.map((m, i) => (
-        <p key={i}>{m.content}</p>
-      ))}
-    </div>
+        {/* Ruta raíz */}
+        <Route
+          path="/"
+          element={<Navigate to={user ? "/dashboard" : "/login"} replace />}
+        />
+
+        {/* 404 */}
+        <Route
+          path="*"
+          element={<Navigate to="/" replace />}
+        />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
 export default App;
-
-console.log("API:", API);
