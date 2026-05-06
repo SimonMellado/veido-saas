@@ -1,4 +1,9 @@
 import { useEffect } from "react";
+import PropTypes from "prop-types";
+
+Login.propTypes = {
+  fetchUser: PropTypes.func.isRequired
+};
 
 const API = process.env.REACT_APP_API;
 
@@ -8,7 +13,7 @@ function Login({ fetchUser }) {
       console.error("REACT_APP_API no definida");
       return;
     }
-    window.location.href = `${API}/auth/login`;
+    globalThis.location.href = `${API}/auth/login`;
   };
 
   // 🔥 CLAVE: al volver de Discord, intenta obtener el usuario

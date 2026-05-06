@@ -27,7 +27,7 @@ function App() {
 
       const data = await res.json();
 
-      if (data && data.id) {
+      if (data?.id) {
         setUser(data);
       } else if (retries > 0) {
         setTimeout(() => fetchUser(retries - 1), 800);
