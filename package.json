@@ -1,4 +1,11 @@
 {
+  "name": "veido",
+  "scripts": {
+    "api": "node api/server.js",
+    "bot": "node bot/index.js",
+    "web": "npm start --prefix web",
+    "dev": "start cmd /k \"node api/server.js\" && start cmd /k \"node bot/index.js\" && start cmd /k \"cd web && npm start\""
+  },
   "devDependencies": {
     "autoprefixer": "^10.5.0",
     "postcss": "^8.5.10"
