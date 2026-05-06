@@ -61,7 +61,7 @@ function App() {
         <Route
           path="/login"
           element={
-            !user ? (
+            user ? (
               <Login fetchUser={fetchUser} />
             ) : (
               <Navigate to="/dashboard" replace />

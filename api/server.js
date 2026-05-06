@@ -16,14 +16,13 @@ app.use(cors({
 
 app.use(express.json());
 
-// ✅ Sesión persistida en MongoDB (no se pierde cuando Render duerme)
 app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({
     mongoUrl: process.env.MONGO_URL,
-    ttl: 60 * 60 * 24 // 24 horas
+    ttl: 60 * 60 * 24
   }),
   cookie: {
     secure: process.env.NODE_ENV === "production",
@@ -34,7 +33,7 @@ app.use(session({
 }));
 
 // ──────────────────────────────────────────────
-// MIDDLEWARE: verificar autenticación
+// MIDDLEWARE AUTH
 // ──────────────────────────────────────────────
 function requireAuth(req, res, next) {
   if (!req.session.user || !req.session.accessToken) {
@@ -89,7 +88,16 @@ app.get("/auth/discord/callback", async (req, res) => {
         console.error("❌ Error guardando sesión:", err);
         return res.status(500).send("Error al guardar sesión");
       }
-      res.redirect(process.env.CLIENT_URL + "/dashboard");
+
+      // Pasar datos del usuario en la URL para evitar problema de cookies cross-domain
+      const userData = encodeURIComponent(JSON.stringify({
+        id: userResponse.data.id,
+        username: userResponse.data.username,
+        avatar: userResponse.data.avatar,
+        global_name: userResponse.data.global_name
+      }));
+
+      res.redirect(`${process.env.CLIENT_URL}/dashboard?user=${userData}`);
     });
 
   } catch (err) {
@@ -115,7 +123,7 @@ app.get("/user", (req, res) => {
 });
 
 // ──────────────────────────────────────────────
-// GUILDS — servidores donde el usuario es admin
+// GUILDS
 // ──────────────────────────────────────────────
 
 app.get("/guilds", requireAuth, async (req, res) => {
@@ -125,7 +133,6 @@ app.get("/guilds", requireAuth, async (req, res) => {
       { headers: { Authorization: `Bearer ${req.session.accessToken}` } }
     );
 
-    // Solo servidores donde el usuario tiene permisos de administrador
     const adminGuilds = response.data.filter(
       g => (parseInt(g.permissions) & 0x8) === 0x8
     );
@@ -138,14 +145,13 @@ app.get("/guilds", requireAuth, async (req, res) => {
 });
 
 // ──────────────────────────────────────────────
-// GUILD — configuración de un servidor específico
+// GUILD ESPECÍFICO
 // ──────────────────────────────────────────────
 
 app.get("/guild/:id", requireAuth, async (req, res) => {
   const { id } = req.params;
 
   try {
-    // Verificar que el usuario pertenece a ese servidor
     const guildsResponse = await axios.get(
       "https://discord.com/api/users/@me/guilds",
       { headers: { Authorization: `Bearer ${req.session.accessToken}` } }
@@ -158,9 +164,6 @@ app.get("/guild/:id", requireAuth, async (req, res) => {
       return res.status(403).json({ error: "No tienes permisos en este servidor" });
     }
 
-    // Aquí puedes buscar la config en MongoDB si tienes un modelo GuildConfig
-    // const config = await GuildConfig.findOne({ guildId: id }) || {};
-
     res.json({
       guildId: id,
       name: guild.name,
@@ -168,7 +171,6 @@ app.get("/guild/:id", requireAuth, async (req, res) => {
       modules: {
         levels: false,
         welcome: false
-        // Añade más módulos aquí según tu bot
       }
     });
 
