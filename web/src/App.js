@@ -21,13 +21,16 @@ function App() {
     try {
       console.log("🔍 Verificando sesión...");
       const res = await fetch(`${API}/user`, { credentials: "include" });
-      const data = await res.json();
       
-      if (data && data.id) {
-        console.log("✅ Usuario autenticado:", data.username);
-        setUser(data);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.id) {
+          console.log("✅ Usuario autenticado:", data.username);
+          setUser(data);
+        } else {
+          setUser(null);
+        }
       } else {
-        console.log("❌ No hay usuario autenticado");
         setUser(null);
       }
     } catch (err) {
@@ -42,6 +45,7 @@ function App() {
     fetchUser();
   }, [fetchUser]);
 
+  // Si está cargando, mostramos el spinner. NO redirigimos.
   if (loading) {
     return (
       <div style={{ 
@@ -74,8 +78,9 @@ function App() {
           element={user ? <Guild user={user} /> : <Navigate to="/login" replace />} 
         />
         
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        {/* Lógica de navegación segura: Si entra a la raíz, decidimos según el estado final */}
+        <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
+        <Route path="*" element={user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
   );
