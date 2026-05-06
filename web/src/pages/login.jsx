@@ -6,13 +6,16 @@ const API = process.env.REACT_APP_API;
 function Login({ fetchUser }) {
   const handleLogin = () => {
     if (!API) {
-      console.error("REACT_APP_API no definida");
+      console.error("❌ REACT_APP_API no definida");
+      alert("Error: API no configurada");
       return;
     }
+    console.log("🚀 Redirigiendo a Discord OAuth...");
     window.location.href = `${API}/auth/login`;
   };
 
   useEffect(() => {
+    // Intentar cargar el usuario al montar el componente
     fetchUser();
   }, [fetchUser]);
 

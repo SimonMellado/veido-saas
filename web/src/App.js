@@ -1,55 +1,56 @@
-import { useEffect, useState, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import "./App.css";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Guild from "./pages/Guild";
+import "./App.css";
 
 const API = process.env.REACT_APP_API;
 
 function App() {
-  const [user, setUser] = useState(undefined);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const fetchUser = useCallback(async (retries = 3) => {
+  const fetchUser = useCallback(async () => {
     if (!API) {
-      console.error("REACT_APP_API no está definida");
-      setUser(null);
+      console.error("❌ REACT_APP_API no está definida");
+      setLoading(false);
       return;
     }
 
     try {
-      const res = await fetch(`${API}/user`, {
-        credentials: "include",
-        headers: { "Content-Type": "application/json" }
-      });
-
-      if (!res.ok) throw new Error("No auth");
-
+      console.log("🔍 Verificando sesión...");
+      const res = await fetch(`${API}/user`, { credentials: "include" });
       const data = await res.json();
-
-      if (data?.id) {
+      
+      if (data && data.id) {
+        console.log("✅ Usuario autenticado:", data.username);
         setUser(data);
-      } else if (retries > 0) {
-        setTimeout(() => fetchUser(retries - 1), 800);
       } else {
+        console.log("❌ No hay usuario autenticado");
         setUser(null);
       }
-    } catch {
-      if (retries > 0) {
-        setTimeout(() => fetchUser(retries - 1), 800);
-      } else {
-        setUser(null);
-      }
+    } catch (err) {
+      console.error("❌ Error al obtener usuario:", err);
+      setUser(null);
+    } finally {
+      setLoading(false);
     }
-  }, [API]); // 🔥 FIX CLAVE
+  }, []);
 
   useEffect(() => {
     fetchUser();
   }, [fetchUser]);
 
-  if (user === undefined) {
+  if (loading) {
     return (
-      <div className="loading-screen">
+      <div style={{ 
+        display: "flex", 
+        justifyContent: "center", 
+        alignItems: "center", 
+        height: "100vh",
+        backgroundColor: "#0f0f0f"
+      }}>
         <div className="loading-spinner" />
       </div>
     );
@@ -58,35 +59,23 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route
-          path="/login"
-          element={
-            user ? (
-              <Login fetchUser={fetchUser} />
-            ) : (
-              <Navigate to="/dashboard" replace />
-            )
-          }
+        <Route 
+          path="/login" 
+          element={user ? <Navigate to="/dashboard" replace /> : <Login fetchUser={fetchUser} />} 
         />
-        <Route
-          path="/dashboard"
-          element={
-            user ? (
-              <Dashboard user={user} />
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
+        
+        <Route 
+          path="/dashboard" 
+          element={user ? <Dashboard user={user} setUser={setUser} /> : <Navigate to="/login" replace />} 
         />
-        <Route
-          path="/guild/:id"
-          element={user ? <Guild /> : <Navigate to="/login" replace />}
+        
+        <Route 
+          path="/guild/:id" 
+          element={user ? <Guild user={user} /> : <Navigate to="/login" replace />} 
         />
-        <Route
-          path="/"
-          element={<Navigate to={user ? "/dashboard" : "/login"} replace />}
-        />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </BrowserRouter>
   );

@@ -89,15 +89,10 @@ app.get("/auth/discord/callback", async (req, res) => {
         return res.status(500).send("Error al guardar sesión");
       }
 
-      // Pasar datos del usuario en la URL para evitar problema de cookies cross-domain
-      const userData = encodeURIComponent(JSON.stringify({
-        id: userResponse.data.id,
-        username: userResponse.data.username,
-        avatar: userResponse.data.avatar,
-        global_name: userResponse.data.global_name
-      }));
-
-      res.redirect(`${process.env.CLIENT_URL}/dashboard?user=${userData}`);
+      console.log("✅ Sesión guardada correctamente:", req.session.user.username);
+      
+      // Redirigir al dashboard - la sesión ya está guardada
+      res.redirect(`${process.env.CLIENT_URL}/dashboard`);
     });
 
   } catch (err) {
@@ -119,6 +114,11 @@ app.get("/auth/logout", (req, res) => {
 // ──────────────────────────────────────────────
 
 app.get("/user", (req, res) => {
+  if (req.session.user) {
+    console.log("✅ Usuario en sesión:", req.session.user.username);
+  } else {
+    console.log("❌ No hay usuario en sesión");
+  }
   res.json(req.session.user || null);
 });
 

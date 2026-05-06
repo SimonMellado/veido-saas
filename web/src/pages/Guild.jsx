@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import PropTypes from "prop-types";
 
 const API = process.env.REACT_APP_API;
 
-function Guild() {
+function Guild({ user }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const [config, setConfig] = useState(null);
@@ -11,28 +12,49 @@ function Guild() {
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    if (!API || !id) return;
+    if (!API || !id) {
+      console.error("❌ API o ID no definidos");
+      setError(true);
+      setLoading(false);
+      return;
+    }
 
-    // ✅ FIX: fetch dentro del componente, con el id correcto
+    console.log("🔍 Cargando configuración del servidor:", id);
+
     fetch(`${API}/guild/${id}`, { credentials: "include" })
       .then(res => {
-        if (!res.ok) throw new Error("Error al cargar");
+        console.log("📊 STATUS:", res.status);
+        
+        if (!res.ok) {
+          if (res.status === 401) {
+            console.log("❌ No autenticado");
+            navigate("/login");
+          }
+          throw new Error("Error al cargar");
+        }
         return res.json();
       })
       .then(data => {
+        console.log("✅ Configuración cargada:", data);
         setConfig(data);
         setLoading(false);
       })
-      .catch(() => {
+      .catch(err => {
+        console.error("❌ Error al cargar guild:", err);
         setError(true);
         setLoading(false);
       });
-  }, [id]);
+  }, [id, navigate]);
 
   if (loading) {
     return (
       <div className="app">
-        <div className="main" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div className="main" style={{ 
+          display: "flex", 
+          alignItems: "center", 
+          justifyContent: "center",
+          minHeight: "100vh"
+        }}>
           <div className="loading-spinner" />
         </div>
       </div>
@@ -45,7 +67,11 @@ function Guild() {
         <div className="main">
           <div className="empty-state">
             <p>No se pudo cargar la configuración del servidor.</p>
-            <button className="btn-discord" onClick={() => navigate("/dashboard")} style={{ marginTop: 16 }}>
+            <button 
+              className="btn-discord" 
+              onClick={() => navigate("/dashboard")} 
+              style={{ marginTop: 16 }}
+            >
               Volver al Dashboard
             </button>
           </div>
@@ -58,9 +84,33 @@ function Guild() {
     <div className="app">
       <aside className="sidebar">
         <div className="sidebar-brand">VEIDO</div>
+        
+        {user && (
+          <div className="sidebar-user">
+            {user.avatar && (
+              <img 
+                src={`https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=128`}
+                alt={user.username}
+                style={{ 
+                  width: 32, 
+                  height: 32, 
+                  borderRadius: "50%", 
+                  marginRight: 8 
+                }}
+              />
+            )}
+            <span className="user-name" style={{ fontSize: 14 }}>
+              {user.global_name || user.username}
+            </span>
+          </div>
+        )}
+        
         <button
           className="btn-logout"
-          onClick={() => navigate("/dashboard")}
+          onClick={() => {
+            console.log("🔙 Volviendo al dashboard");
+            navigate("/dashboard");
+          }}
           style={{ marginTop: 12 }}
         >
           ← Volver
@@ -69,6 +119,19 @@ function Guild() {
 
       <main className="main">
         <div className="page-header">
+          {config.icon && (
+            <img 
+              src={`https://cdn.discordapp.com/icons/${config.guildId}/${config.icon}.png?size=256`}
+              alt={config.name}
+              style={{ 
+                width: 80, 
+                height: 80, 
+                borderRadius: 16, 
+                marginBottom: 16,
+                border: "3px solid #5865F2"
+              }}
+            />
+          )}
           <h1>{config.name}</h1>
           <p className="page-subtitle">ID: {config.guildId}</p>
         </div>
@@ -94,5 +157,14 @@ function Guild() {
     </div>
   );
 }
+
+Guild.propTypes = {
+  user: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    username: PropTypes.string.isRequired,
+    avatar: PropTypes.string,
+    global_name: PropTypes.string
+  }).isRequired
+};
 
 export default Guild;
