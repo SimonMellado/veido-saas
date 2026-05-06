@@ -89,7 +89,7 @@ app.get("/auth/discord/callback", async (req, res) => {
         console.error("❌ Error guardando sesión:", err);
         return res.status(500).send("Error al guardar sesión");
       }
-      res.redirect(process.env.CLIENT_URL);
+      res.redirect(process.env.CLIENT_URL + "/dashboard");
     });
 
   } catch (err) {
