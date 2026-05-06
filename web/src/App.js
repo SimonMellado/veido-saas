@@ -23,6 +23,8 @@ function App() {
         headers: { "Content-Type": "application/json" }
       });
 
+      if (!res.ok) throw new Error("No auth");
+
       const data = await res.json();
 
       if (data && data.id) {
@@ -39,7 +41,7 @@ function App() {
         setUser(null);
       }
     }
-  }, []);
+  }, [API]); // 🔥 FIX CLAVE
 
   useEffect(() => {
     fetchUser();
@@ -58,11 +60,23 @@ function App() {
       <Routes>
         <Route
           path="/login"
-          element={!user ? <Login /> : <Navigate to="/dashboard" replace />}
+          element={
+            !user ? (
+              <Login fetchUser={fetchUser} />
+            ) : (
+              <Navigate to="/dashboard" replace />
+            )
+          }
         />
         <Route
           path="/dashboard"
-          element={user ? <Dashboard user={user} /> : <Navigate to="/login" replace />}
+          element={
+            user ? (
+              <Dashboard user={user} />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
         />
         <Route
           path="/guild/:id"

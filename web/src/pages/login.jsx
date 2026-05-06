@@ -1,6 +1,8 @@
+import { useEffect } from "react";
+
 const API = process.env.REACT_APP_API;
 
-function Login() {
+function Login({ fetchUser }) {
   const handleLogin = () => {
     if (!API) {
       console.error("REACT_APP_API no definida");
@@ -8,6 +10,11 @@ function Login() {
     }
     window.location.href = `${API}/auth/login`;
   };
+
+  // 🔥 CLAVE: al volver de Discord, intenta obtener el usuario
+  useEffect(() => {
+    fetchUser();
+  }, [fetchUser]);
 
   return (
     <div className="login-page">
