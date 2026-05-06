@@ -4,6 +4,7 @@ const cors = require("cors");
 const axios = require("axios");
 const session = require("express-session");
 const MongoStore = require("connect-mongo");
+const mongoose = require('mongoose');
 
 const app = express();
 
@@ -89,7 +90,7 @@ app.get("/guilds", requireAuth, async (req, res) => {
     const response = await axios.get("https://discord.com/api/users/@me/guilds", {
       headers: { Authorization: `Bearer ${req.session.accessToken}` }
     });
-    const adminGuilds = response.data.filter(g => (parseInt(g.permissions) & 0x8) === 0x8);
+    const adminGuilds = response.data.filter(g => (Number.parseInt(g.permissions) & 0x8) === 0x8);
     res.json(adminGuilds);
   } catch (err) {
     res.status(500).json([]);
@@ -102,3 +103,11 @@ app.get("/guild/:id", requireAuth, async (req, res) => {
 });
 
 app.listen(process.env.PORT || 3001);
+
+mongoose.connect(process.env.MONGO_URL)
+  .then(() => console.log('✅ Connected to MongoDB successfully!'))
+  .catch((err) => console.error('❌ MongoDB connection error:', err));
+
+app.listen(3000, () => {
+  console.log('🚀 Server is running on port 3000');
+});
