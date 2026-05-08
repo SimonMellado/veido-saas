@@ -9,9 +9,11 @@ module.exports = {
     async execute(interaction) {
         const queue = useQueue(interaction.guild.id);
 
-        if (!queue) return interaction.reply("❌ No hay música");
+        if (!queue) {
+            return interaction.reply({ content: "❌ No hay música reproduciéndose", ephemeral: true });
+        }
 
         queue.delete();
-        return interaction.reply("🛑 Música detenida");
+        return interaction.reply("🛑 Música detenida y cola limpiada");
     }
 };

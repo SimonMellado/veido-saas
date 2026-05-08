@@ -10,10 +10,11 @@ module.exports = {
         const queue = useQueue(interaction.guild.id);
 
         if (!queue || !queue.isPlaying()) {
-            return interaction.reply("❌ No hay música");
+            return interaction.reply({ content: "❌ No hay música reproduciéndose", ephemeral: true });
         }
 
+        const track = queue.currentTrack;
         queue.node.skip();
-        return interaction.reply("⏭️ Canción saltada");
+        return interaction.reply(`⏭️ Saltando: **${track?.title || "canción actual"}**`);
     }
 };

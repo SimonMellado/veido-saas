@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 const { useQueue } = require("discord-player");
 
 module.exports = {
@@ -9,18 +9,26 @@ module.exports = {
     async execute(interaction) {
         const queue = useQueue(interaction.guild.id);
 
-        if (!queue || !queue.tracks.size) {
-            return interaction.reply("📭 La cola está vacía");
+        if (!queue || (!queue.isPlaying() && !queue.tracks.size)) {
+            return interaction.reply({ content: "📭 La cola está vacía", ephemeral: true });
         }
 
+        const current = queue.currentTrack;
         const tracks = queue.tracks.toArray().slice(0, 10);
 
-        let description = tracks
-            .map((t, i) => `${i + 1}. ${t.title}`)
-            .join("\n");
+        const embed = new EmbedBuilder()
+            .setColor(0xff0033)
+            .setTitle("🎵 Cola de música")
+            .setDescription(
+                (current ? `▶️ **Ahora:** ${current.title} — ${current.author}\n\n` : "") +
+                (tracks.length > 0
+                    ? tracks.map((t, i) => `${i + 1}. **${t.title}** — ${t.author}`).join("\n")
+                    : "_No hay más canciones en la cola_")
+            )
+            .setFooter({
+                text: `${queue.tracks.size} canción(es) en cola`
+            });
 
-        return interaction.reply({
-            content: `🎵 **Cola de música:**\n${description}`
-        });
+        return interaction.reply({ embeds: [embed] });
     }
 };
