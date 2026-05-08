@@ -30,7 +30,6 @@ app.use(session({
 }));
 
 function requireAuth(req, res, next) {
-  // ✅ Acepta token desde header Authorization O desde sesión
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith("Bearer ")) {
     req.accessToken = authHeader.split(" ")[1];
@@ -81,13 +80,12 @@ app.get("/auth/discord/callback", async (req, res) => {
     req.session.accessToken = accessToken;
     await req.session.save();
 
-    // ✅ Pasar usuario Y accessToken en la URL
     const payload = encodeURIComponent(JSON.stringify({
       id: userResponse.data.id,
       username: userResponse.data.username,
       avatar: userResponse.data.avatar,
       global_name: userResponse.data.global_name,
-      token: accessToken  // el frontend lo usa directo para /guilds
+      token: accessToken
     }));
 
     res.redirect(`${process.env.CLIENT_URL}/dashboard?user=${payload}`);
@@ -134,10 +132,27 @@ app.get("/guild/:id", requireAuth, async (req, res) => {
     const isAdmin = guild && (Number.parseInt(guild.permissions) & 0x8) === 0x8;
     if (!isAdmin) return res.status(403).json({ error: "Sin permisos" });
 
+    // Obtener canales del servidor via Discord API con el bot token
+    let channels = [];
+    try {
+      const channelsResponse = await axios.get(
+        `https://discord.com/api/guilds/${req.params.id}/channels`,
+        { headers: { Authorization: `Bot ${process.env.TOKEN}` } }
+      );
+      // Solo canales de texto
+      channels = channelsResponse.data
+        .filter(ch => ch.type === 0)
+        .map(ch => ({ id: ch.id, name: ch.name }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+    } catch {
+      channels = [];
+    }
+
     res.json({
       guildId: req.params.id,
       name: guild.name,
       icon: guild.icon,
+      channels,
       modules: { levels: false, welcome: false }
     });
   } catch (err) {
@@ -145,6 +160,13 @@ app.get("/guild/:id", requireAuth, async (req, res) => {
     res.status(500).json(null);
   }
 });
+
+// ──────────────── RUTAS DE BIENVENIDA ────────────────
+
+const welcomeRoutes = require("./routes/welcomeRoutes");
+app.use("/guild", welcomeRoutes);
+
+// ──────────────── HEALTH CHECK ────────────────
 
 app.get("/", (req, res) => {
   res.json({ status: "API running 🚀" });
