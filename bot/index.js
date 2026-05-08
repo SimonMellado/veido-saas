@@ -89,9 +89,7 @@ client.player = new Player(client, {
 async function initializePlayer() {
     try {
         await client.player.extractors.loadMulti(DefaultExtractors);
-        await client.player.extractors.register(YoutubeiExtractor, {
-            cookie: require("fs").readFileSync("./cookies.txt", "utf-8")
-        });
+        await client.player.extractors.register(YoutubeiExtractor, {});
         console.log("🎧 Extractors cargados con cookies de YouTube");
     } catch (err) {
         console.error("❌ Error al cargar extractors:", err);
