@@ -25,6 +25,24 @@ const VARIABLES = [
   { var: "{accountage}",  desc: "Antigüedad de la cuenta" },
 ];
 
+const DEFAULT_WELCOME = {
+  enabled: false,
+  channelId: null,
+  message: "¡Bienvenido/a {user} a {server}! 🎉 Eres el miembro #{membercount}.",
+  backgroundUrl: null,
+  useAvatar: true,
+  embedColor: "#ff0033"
+};
+
+const DEFAULT_FAREWELL = {
+  enabled: false,
+  channelId: null,
+  message: "👋 {username} ha abandonado {server}. Nos quedamos con {membercount} miembros.",
+  backgroundUrl: null,
+  useAvatar: true,
+  embedColor: "#5865F2"
+};
+
 function ComingSoon({ label, icon }) {
   return (
     <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", minHeight:320, gap:16, textAlign:"center" }}>
@@ -66,8 +84,8 @@ function SectionGeneral({ config }) {
 }
 
 function SectionBienvenida({ guildId, channels }) {
-  const [welcome, setWelcome] = useState(null);
-  const [farewell, setFarewell] = useState(null);
+  const [welcome, setWelcome] = useState({ ...DEFAULT_WELCOME });
+  const [farewell, setFarewell] = useState({ ...DEFAULT_FAREWELL });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -79,12 +97,24 @@ function SectionBienvenida({ guildId, channels }) {
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
     try {
-      const res = await fetch(`${API}/guild/${guildId}/welcome`, { credentials:"include", headers });
+      // ✅ FIX: URL correcta apuntando directo a la API
+      const res = await fetch(`${API}/guild/${guildId}/welcome`, {
+        credentials: "include",
+        headers
+      });
+
+      if (!res.ok) {
+        console.warn("⚠️ No se pudo cargar config, usando defaults");
+        return;
+      }
+
       const data = await res.json();
-      setWelcome(data.welcome);
-      setFarewell(data.farewell);
+      // ✅ FIX: Siempre hacer merge con defaults para evitar nulls
+      setWelcome({ ...DEFAULT_WELCOME, ...(data.welcome || {}) });
+      setFarewell({ ...DEFAULT_FAREWELL, ...(data.farewell || {}) });
     } catch (err) {
       console.error("❌ Error cargando welcome config:", err);
+      // Usar defaults si falla — no crashear
     } finally {
       setLoading(false);
     }
@@ -99,26 +129,34 @@ function SectionBienvenida({ guildId, channels }) {
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
     try {
-      await fetch(`${API}/guild/${guildId}/welcome`, {
+      const res = await fetch(`${API}/guild/${guildId}/welcome`, {
         method: "POST",
         credentials: "include",
         headers,
         body: JSON.stringify({ welcome, farewell })
       });
+
+      if (!res.ok) throw new Error("Error al guardar");
+
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
       console.error("❌ Error guardando:", err);
+      alert("❌ Error al guardar. Verifica que la API esté corriendo.");
     } finally {
       setSaving(false);
     }
   };
 
-  const insertVar = (varText, field, setter, current) => {
-    setter({ ...current, [field]: (current[field] || "") + varText });
+  const insertVar = (varText, setter, current) => {
+    setter({ ...current, message: (current.message || "") + varText });
   };
 
-  if (loading) return <div style={{ display:"flex", justifyContent:"center", padding:40 }}><div className="loading-spinner"/></div>;
+  if (loading) return (
+    <div style={{ display:"flex", justifyContent:"center", padding:40 }}>
+      <div className="loading-spinner"/>
+    </div>
+  );
 
   const cfg = tab === "welcome" ? welcome : farewell;
   const setCfg = tab === "welcome" ? setWelcome : setFarewell;
@@ -180,6 +218,11 @@ function SectionBienvenida({ guildId, channels }) {
               <option key={ch.id} value={ch.id}>#{ch.name}</option>
             ))}
           </select>
+          {channels.length === 0 && (
+            <p style={{ fontSize:12, color:"var(--text-secondary,#6b7280)", margin:"4px 0 0" }}>
+              ⚠️ No se cargaron canales. Verifica que el bot esté en el servidor.
+            </p>
+          )}
         </div>
 
         {/* Mensaje */}
@@ -187,12 +230,11 @@ function SectionBienvenida({ guildId, channels }) {
           <p className="guild-name" style={{ margin:"0 0 4px" }}>Mensaje personalizado</p>
           <p style={{ color:"var(--text-secondary,#6b7280)", fontSize:12, margin:"0 0 8px" }}>Haz clic en una variable para insertarla</p>
 
-          {/* Variables */}
           <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:10 }}>
             {VARIABLES.map(v => (
-              <button key={v.var} title={v.desc} onClick={() => insertVar(v.var, "message", setCfg, cfg)} style={{
-                padding:"4px 10px", borderRadius:6, border:`1px solid ${accentColor}40`, background:`${accentColor}10`,
-                color: accentColor, fontSize:12, cursor:"pointer", fontFamily:"monospace"
+              <button key={v.var} title={v.desc} onClick={() => insertVar(v.var, setCfg, cfg)} style={{
+                padding:"4px 10px", borderRadius:6, border:`1px solid ${accentColor}40`,
+                background:`${accentColor}10`, color: accentColor, fontSize:12, cursor:"pointer", fontFamily:"monospace"
               }}>
                 {v.var}
               </button>
@@ -206,7 +248,6 @@ function SectionBienvenida({ guildId, channels }) {
             style={{ width:"100%", padding:"10px 12px", borderRadius:8, border:"1px solid rgba(255,255,255,0.1)", background:"var(--bg-base,#080b12)", color:"var(--text-primary,#e8eaf0)", fontSize:14, resize:"vertical", boxSizing:"border-box" }}
           />
 
-          {/* Preview del mensaje */}
           {cfg.message && (
             <div style={{ padding:"10px 12px", borderRadius:8, background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.06)", fontSize:13, color:"var(--text-secondary,#6b7280)", marginTop:4 }}>
               <span style={{ fontSize:11, color: accentColor, marginBottom:4, display:"block" }}>Vista previa:</span>
@@ -226,13 +267,12 @@ function SectionBienvenida({ guildId, channels }) {
         <div className="card" style={{ gap:12 }}>
           <p className="guild-name" style={{ margin:"0 0 4px" }}>Diseño de la imagen</p>
 
-          {/* Toggle avatar como fondo */}
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
             <div>
               <p style={{ margin:0, fontSize:14, color:"var(--text-primary,#e8eaf0)" }}>Usar avatar como fondo</p>
               <p style={{ margin:"2px 0 0", fontSize:12, color:"var(--text-secondary,#6b7280)" }}>El avatar del usuario se usa como fondo difuminado</p>
             </div>
-            <div onClick={() => setCfg({ ...cfg, useAvatar: !cfg.useAvatar, backgroundUrl: !cfg.useAvatar ? null : cfg.backgroundUrl })} style={{
+            <div onClick={() => setCfg({ ...cfg, useAvatar: !cfg.useAvatar })} style={{
               width:48, height:26, borderRadius:13, cursor:"pointer", position:"relative", transition:"background 0.2s",
               background: cfg.useAvatar ? accentColor : "rgba(255,255,255,0.1)"
             }}>
@@ -240,10 +280,9 @@ function SectionBienvenida({ guildId, channels }) {
             </div>
           </div>
 
-          {/* URL de fondo personalizado */}
           {!cfg.useAvatar && (
             <div>
-              <p style={{ margin:"0 0 6px", fontSize:13, color:"var(--text-secondary,#6b7280)" }}>URL de imagen de fondo (1920x250 recomendado)</p>
+              <p style={{ margin:"0 0 6px", fontSize:13, color:"var(--text-secondary,#6b7280)" }}>URL de imagen de fondo (800x250 recomendado)</p>
               <input
                 type="url"
                 placeholder="https://ejemplo.com/fondo.png"
@@ -254,7 +293,6 @@ function SectionBienvenida({ guildId, channels }) {
             </div>
           )}
 
-          {/* Color del embed */}
           <div style={{ display:"flex", alignItems:"center", gap:12 }}>
             <p style={{ margin:0, fontSize:14, color:"var(--text-primary,#e8eaf0)", flex:1 }}>Color de acento</p>
             <input
