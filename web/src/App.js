@@ -26,7 +26,6 @@ function App() {
         const userData = JSON.parse(decodeURIComponent(userParam));
         if (userData && userData.id) {
           console.log("✅ Usuario recibido desde URL:", userData.username);
-          // Guardar token en localStorage para usarlo en peticiones
           if (userData.token) {
             localStorage.setItem("discord_token", userData.token);
           }
@@ -40,11 +39,10 @@ function App() {
       }
     }
 
-    // PASO 2: Intentar recuperar desde localStorage
+    // PASO 2: Intentar recuperar sesión con token guardado
     const savedToken = localStorage.getItem("discord_token");
     if (savedToken) {
       try {
-        console.log("🔍 Verificando token guardado...");
         const res = await fetch(`${API}/user`, {
           credentials: "include",
           headers: { "Authorization": `Bearer ${savedToken}` }
@@ -55,18 +53,15 @@ function App() {
           setUser(data);
           return;
         }
-      } catch (e) {
-        console.error("❌ Token guardado inválido");
+      } catch {
         localStorage.removeItem("discord_token");
       }
     }
 
     // PASO 3: Consultar /user normalmente
     try {
-      console.log("🔍 Consultando sesión en API...");
       const res = await fetch(`${API}/user`, { credentials: "include" });
       const data = await res.json();
-
       if (data && data.id) {
         setUser(data);
       } else if (retries > 0) {
@@ -88,9 +83,7 @@ function App() {
   }, [fetchUser]);
 
   const handleSetUser = (userData) => {
-    if (!userData) {
-      localStorage.removeItem("discord_token");
-    }
+    if (!userData) localStorage.removeItem("discord_token");
     setUser(userData);
   };
 
@@ -118,7 +111,7 @@ function App() {
         <Route
           path="/guild/:id"
           element={user
-            ? <Guild setUser={handleSetUser} />
+            ? <Guild user={user} setUser={handleSetUser} />
             : <Navigate to="/login" replace />}
         />
         <Route
