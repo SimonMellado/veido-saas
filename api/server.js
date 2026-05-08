@@ -30,10 +30,17 @@ app.use(session({
 }));
 
 function requireAuth(req, res, next) {
-  if (!req.session.user || !req.session.accessToken) {
-    return res.status(401).json({ error: "No autenticado" });
+  // ✅ Acepta token desde header Authorization O desde sesión
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    req.accessToken = authHeader.split(" ")[1];
+    return next();
   }
-  next();
+  if (req.session.user && req.session.accessToken) {
+    req.accessToken = req.session.accessToken;
+    return next();
+  }
+  return res.status(401).json({ error: "No autenticado" });
 }
 
 // ──────────────── AUTH ────────────────
@@ -64,22 +71,26 @@ app.get("/auth/discord/callback", async (req, res) => {
       { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
     );
 
+    const accessToken = tokenResponse.data.access_token;
+
     const userResponse = await axios.get("https://discord.com/api/users/@me", {
-      headers: { Authorization: `Bearer ${tokenResponse.data.access_token}` }
+      headers: { Authorization: `Bearer ${accessToken}` }
     });
 
     req.session.user = userResponse.data;
-    req.session.accessToken = tokenResponse.data.access_token;
+    req.session.accessToken = accessToken;
+    await req.session.save();
 
-    // ✅ FIX: pasar datos del usuario en la URL para evitar problema de cookies cross-domain
-    const userData = encodeURIComponent(JSON.stringify({
+    // ✅ Pasar usuario Y accessToken en la URL
+    const payload = encodeURIComponent(JSON.stringify({
       id: userResponse.data.id,
       username: userResponse.data.username,
       avatar: userResponse.data.avatar,
-      global_name: userResponse.data.global_name
+      global_name: userResponse.data.global_name,
+      token: accessToken  // el frontend lo usa directo para /guilds
     }));
 
-    res.redirect(`${process.env.CLIENT_URL}/dashboard?user=${userData}`);
+    res.redirect(`${process.env.CLIENT_URL}/dashboard?user=${payload}`);
 
   } catch (err) {
     console.error("🔥 Error en OAuth:", err.response?.data || err.message);
@@ -102,7 +113,7 @@ app.get("/user", (req, res) => {
 app.get("/guilds", requireAuth, async (req, res) => {
   try {
     const response = await axios.get("https://discord.com/api/users/@me/guilds", {
-      headers: { Authorization: `Bearer ${req.session.accessToken}` }
+      headers: { Authorization: `Bearer ${req.accessToken}` }
     });
     const adminGuilds = response.data.filter(
       g => (Number.parseInt(g.permissions) & 0x8) === 0x8
@@ -117,7 +128,7 @@ app.get("/guilds", requireAuth, async (req, res) => {
 app.get("/guild/:id", requireAuth, async (req, res) => {
   try {
     const guildsResponse = await axios.get("https://discord.com/api/users/@me/guilds", {
-      headers: { Authorization: `Bearer ${req.session.accessToken}` }
+      headers: { Authorization: `Bearer ${req.accessToken}` }
     });
     const guild = guildsResponse.data.find(g => g.id === req.params.id);
     const isAdmin = guild && (Number.parseInt(guild.permissions) & 0x8) === 0x8;

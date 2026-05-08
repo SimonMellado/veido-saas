@@ -17,7 +17,7 @@ function App() {
       return;
     }
 
-    // ✅ PASO 1: Leer usuario desde ?user= en la URL (viene del redirect OAuth)
+    // PASO 1: Leer usuario desde ?user= en la URL (viene del redirect OAuth)
     const params = new URLSearchParams(window.location.search);
     const userParam = params.get("user");
 
@@ -26,8 +26,12 @@ function App() {
         const userData = JSON.parse(decodeURIComponent(userParam));
         if (userData && userData.id) {
           console.log("✅ Usuario recibido desde URL:", userData.username);
-          setUser(userData);
-          // Limpiar la URL sin recargar la página
+          // Guardar token en localStorage para usarlo en peticiones
+          if (userData.token) {
+            localStorage.setItem("discord_token", userData.token);
+          }
+          const { token, ...userWithoutToken } = userData;
+          setUser(userWithoutToken);
           window.history.replaceState({}, "", "/dashboard");
           return;
         }
@@ -36,27 +40,41 @@ function App() {
       }
     }
 
-    // ✅ PASO 2: Si no hay param en URL, consultar /user en la API
+    // PASO 2: Intentar recuperar desde localStorage
+    const savedToken = localStorage.getItem("discord_token");
+    if (savedToken) {
+      try {
+        console.log("🔍 Verificando token guardado...");
+        const res = await fetch(`${API}/user`, {
+          credentials: "include",
+          headers: { "Authorization": `Bearer ${savedToken}` }
+        });
+        const data = await res.json();
+        if (data && data.id) {
+          console.log("✅ Sesión recuperada:", data.username);
+          setUser(data);
+          return;
+        }
+      } catch (e) {
+        console.error("❌ Token guardado inválido");
+        localStorage.removeItem("discord_token");
+      }
+    }
+
+    // PASO 3: Consultar /user normalmente
     try {
       console.log("🔍 Consultando sesión en API...");
-      const res = await fetch(`${API}/user`, {
-        credentials: "include"
-      });
-
+      const res = await fetch(`${API}/user`, { credentials: "include" });
       const data = await res.json();
-      console.log("📊 Respuesta /user:", data);
 
       if (data && data.id) {
         setUser(data);
       } else if (retries > 0) {
-        console.log(`⏳ Reintentando... (${retries} intentos restantes)`);
         setTimeout(() => fetchUser(retries - 1), 800);
       } else {
-        console.log("❌ No hay sesión activa");
         setUser(null);
       }
-    } catch (err) {
-      console.error("❌ Error consultando /user:", err);
+    } catch {
       if (retries > 0) {
         setTimeout(() => fetchUser(retries - 1), 800);
       } else {
@@ -69,7 +87,13 @@ function App() {
     fetchUser();
   }, [fetchUser]);
 
-  // Pantalla de carga mientras se verifica la sesión
+  const handleSetUser = (userData) => {
+    if (!userData) {
+      localStorage.removeItem("discord_token");
+    }
+    setUser(userData);
+  };
+
   if (user === undefined) {
     return (
       <div className="loading-screen">
@@ -88,12 +112,14 @@ function App() {
         <Route
           path="/dashboard"
           element={user
-            ? <Dashboard user={user} setUser={setUser} />
+            ? <Dashboard user={user} setUser={handleSetUser} />
             : <Navigate to="/login" replace />}
         />
         <Route
           path="/guild/:id"
-          element={user ? <Guild /> : <Navigate to="/login" replace />}
+          element={user
+            ? <Guild setUser={handleSetUser} />
+            : <Navigate to="/login" replace />}
         />
         <Route
           path="/"

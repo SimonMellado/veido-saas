@@ -16,10 +16,18 @@ function Dashboard({ user, setUser }) {
       return;
     }
 
-    console.log("🔍 Cargando servidores...");
+    const token = localStorage.getItem("discord_token");
+    console.log("🔍 Cargando servidores con token:", token ? "✅" : "❌ no hay token");
 
     try {
-      const res = await fetch(`${API}/guilds`, { credentials: "include" });
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const res = await fetch(`${API}/guilds`, {
+        credentials: "include",
+        headers
+      });
+
       console.log("📊 STATUS:", res.status);
 
       if (res.status === 401) {
@@ -46,9 +54,7 @@ function Dashboard({ user, setUser }) {
 
   const handleLogout = async () => {
     try {
-      console.log("🚪 Cerrando sesión...");
       await fetch(`${API}/auth/logout`, { credentials: "include" });
-      console.log("✅ Sesión cerrada");
       setUser(null);
     } catch (err) {
       console.error("❌ Error al cerrar sesión:", err);
@@ -61,7 +67,6 @@ function Dashboard({ user, setUser }) {
     <div className="app">
       <aside className="sidebar">
         <div className="sidebar-brand">VEIDO</div>
-
         <div className="sidebar-user">
           {user.avatar && (
             <img
@@ -98,36 +103,21 @@ function Dashboard({ user, setUser }) {
               <div
                 key={g.id}
                 className="card"
-                onClick={() => {
-                  console.log("🖱️ Navegando a guild:", g.name);
-                  navigate(`/guild/${g.id}`);
-                }}
+                onClick={() => navigate(`/guild/${g.id}`)}
                 style={{ cursor: "pointer" }}
               >
                 {g.icon ? (
                   <img
                     src={`https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png?size=128`}
                     alt={g.name}
-                    style={{
-                      width: 64,
-                      height: 64,
-                      borderRadius: 8,
-                      marginBottom: 12
-                    }}
+                    style={{ width: 64, height: 64, borderRadius: 8, marginBottom: 12 }}
                   />
                 ) : (
                   <div style={{
-                    width: 64,
-                    height: 64,
-                    borderRadius: 8,
-                    backgroundColor: "#5865F2",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 24,
-                    fontWeight: "bold",
-                    color: "white",
-                    marginBottom: 12
+                    width: 64, height: 64, borderRadius: 8,
+                    backgroundColor: "#5865F2", display: "flex",
+                    alignItems: "center", justifyContent: "center",
+                    fontSize: 24, fontWeight: "bold", color: "white", marginBottom: 12
                   }}>
                     {g.name.charAt(0).toUpperCase()}
                   </div>
