@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import PropTypes from "prop-types";
 
@@ -9,7 +9,7 @@ function Dashboard({ user, setUser }) {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  useEffect(() => {
+  const loadGuilds = useCallback(async () => {
     if (!API) {
       console.error("❌ REACT_APP_API no definida");
       setLoading(false);
@@ -17,31 +17,32 @@ function Dashboard({ user, setUser }) {
     }
 
     console.log("🔍 Cargando servidores...");
-    
-    fetch(`${API}/guilds`, { credentials: "include" })
-      .then(res => {
-        console.log("📊 STATUS:", res.status);
-        
-        if (res.status === 401) {
-          console.log("❌ No autenticado, redirigiendo al login...");
-          setUser(null);
-          navigate("/login");
-          return [];
-        }
-        
-        return res.json();
-      })
-      .then(data => {
-        console.log("✅ GUILDS recibidos:", data);
-        setGuilds(Array.isArray(data) ? data : []);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error("❌ Error al cargar guilds:", err);
-        setGuilds([]);
-        setLoading(false);
-      });
-  }, [API, navigate, setUser]);
+
+    try {
+      const res = await fetch(`${API}/guilds`, { credentials: "include" });
+      console.log("📊 STATUS:", res.status);
+
+      if (res.status === 401) {
+        console.log("❌ No autenticado, redirigiendo al login...");
+        setUser(null);
+        navigate("/login");
+        return;
+      }
+
+      const data = await res.json();
+      console.log("✅ GUILDS recibidos:", data);
+      setGuilds(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("❌ Error al cargar guilds:", err);
+      setGuilds([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [navigate, setUser]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    loadGuilds();
+  }, [loadGuilds]);
 
   const handleLogout = async () => {
     try {
@@ -63,13 +64,13 @@ function Dashboard({ user, setUser }) {
 
         <div className="sidebar-user">
           {user.avatar && (
-            <img 
+            <img
               src={`https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=128`}
               alt={user.username}
-              style={{ 
-                width: 40, 
-                height: 40, 
-                borderRadius: "50%", 
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: "50%",
                 marginRight: 8,
                 border: "2px solid #5865F2"
               }}
@@ -94,9 +95,9 @@ function Dashboard({ user, setUser }) {
         ) : (
           <div className="grid">
             {guilds.map(g => (
-              <div 
-                key={g.id} 
-                className="card" 
+              <div
+                key={g.id}
+                className="card"
                 onClick={() => {
                   console.log("🖱️ Navegando a guild:", g.name);
                   navigate(`/guild/${g.id}`);
@@ -104,21 +105,21 @@ function Dashboard({ user, setUser }) {
                 style={{ cursor: "pointer" }}
               >
                 {g.icon ? (
-                  <img 
+                  <img
                     src={`https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png?size=128`}
                     alt={g.name}
-                    style={{ 
-                      width: 64, 
-                      height: 64, 
-                      borderRadius: 8, 
-                      marginBottom: 12 
+                    style={{
+                      width: 64,
+                      height: 64,
+                      borderRadius: 8,
+                      marginBottom: 12
                     }}
                   />
                 ) : (
-                  <div style={{ 
-                    width: 64, 
-                    height: 64, 
-                    borderRadius: 8, 
+                  <div style={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: 8,
                     backgroundColor: "#5865F2",
                     display: "flex",
                     alignItems: "center",

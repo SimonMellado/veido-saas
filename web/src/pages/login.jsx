@@ -10,13 +10,18 @@ function Login({ fetchUser }) {
       alert("Error: API no configurada");
       return;
     }
+
     console.log("🚀 Redirigiendo a Discord OAuth...");
     window.location.href = `${API}/auth/login`;
   };
 
   useEffect(() => {
-    // Intentar cargar el usuario al montar el componente
-    fetchUser();
+    // 🔒 FIX: evitar crash si fetchUser no es función
+    if (typeof fetchUser === "function") {
+      fetchUser();
+    } else {
+      console.error("❌ fetchUser no es una función:", fetchUser);
+    }
   }, [fetchUser]);
 
   return (
@@ -25,10 +30,13 @@ function Login({ fetchUser }) {
         <div className="login-logo">
           <span className="logo-text">VEIDO</span>
         </div>
+
         <h1 className="login-title">Dashboard</h1>
+
         <p className="login-subtitle">
           Gestiona tu bot de Discord desde un solo lugar
         </p>
+
         <button className="btn-discord" onClick={handleLogin}>
           Iniciar sesión con Discord
         </button>
@@ -37,8 +45,14 @@ function Login({ fetchUser }) {
   );
 }
 
+// 🔒 FIX: no romper si no llega prop
 Login.propTypes = {
-  fetchUser: PropTypes.func.isRequired
+  fetchUser: PropTypes.func
+};
+
+// 🔒 FIX: fallback automático
+Login.defaultProps = {
+  fetchUser: () => {}
 };
 
 export default Login;
