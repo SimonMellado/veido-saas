@@ -1,8 +1,7 @@
-const { createCanvas, loadImage, registerFont } = require("canvas");
+const { createCanvas, loadImage } = require("canvas");
 const { AttachmentBuilder, EmbedBuilder } = require("discord.js");
 const GuildConfig = require("../../models/GuildConfig");
 
-// Variables disponibles para personalizar mensajes
 function parseMessage(template, member, guild) {
     return template
         .replace(/{user}/g, `<@${member.id}>`)
@@ -14,25 +13,21 @@ function parseMessage(template, member, guild) {
         .replace(/{accountage}/g, Math.floor((Date.now() - member.user.createdAt) / (1000 * 60 * 60 * 24)) + " días");
 }
 
-// Genera la imagen canvas de bienvenida
 async function generateWelcomeCard(member, config, type = "welcome") {
     const cfg = type === "welcome" ? config.welcome : config.farewell;
     const canvas = createCanvas(800, 250);
     const ctx = canvas.getContext("2d");
 
-    // ── Fondo ──
     if (cfg.backgroundUrl) {
         try {
             const bg = await loadImage(cfg.backgroundUrl);
             ctx.drawImage(bg, 0, 0, 800, 250);
-            // Overlay oscuro para legibilidad
             ctx.fillStyle = "rgba(0,0,0,0.55)";
             ctx.fillRect(0, 0, 800, 250);
         } catch {
             drawDefaultBackground(ctx, cfg.embedColor, type);
         }
     } else if (cfg.useAvatar) {
-        // Usar avatar del usuario como fondo difuminado
         try {
             const avatarUrl = member.user.displayAvatarURL({ extension: "png", size: 512 });
             const avatar = await loadImage(avatarUrl);
@@ -48,18 +43,13 @@ async function generateWelcomeCard(member, config, type = "welcome") {
         drawDefaultBackground(ctx, cfg.embedColor, type);
     }
 
-    // ── Avatar circular ──
     try {
         const avatarUrl = member.user.displayAvatarURL({ extension: "png", size: 256 });
         const avatar = await loadImage(avatarUrl);
-
         const x = 125, y = 125, radius = 70;
 
-        // Sombra del avatar
         ctx.shadowColor = cfg.embedColor;
         ctx.shadowBlur = 20;
-
-        // Círculo del avatar
         ctx.save();
         ctx.beginPath();
         ctx.arc(x, y, radius, 0, Math.PI * 2);
@@ -67,10 +57,8 @@ async function generateWelcomeCard(member, config, type = "welcome") {
         ctx.clip();
         ctx.drawImage(avatar, x - radius, y - radius, radius * 2, radius * 2);
         ctx.restore();
-
         ctx.shadowBlur = 0;
 
-        // Borde del avatar
         ctx.beginPath();
         ctx.arc(x, y, radius + 3, 0, Math.PI * 2);
         ctx.strokeStyle = cfg.embedColor;
@@ -78,15 +66,12 @@ async function generateWelcomeCard(member, config, type = "welcome") {
         ctx.stroke();
     } catch {}
 
-    // ── Texto ──
     const textX = 230;
 
-    // Título (Bienvenido / Adiós)
     ctx.font = "bold 22px Sans";
     ctx.fillStyle = cfg.embedColor;
     ctx.fillText(type === "welcome" ? "¡BIENVENIDO/A!" : "¡HASTA LUEGO!", textX, 80);
 
-    // Nombre de usuario
     ctx.font = "bold 34px Sans";
     ctx.fillStyle = "#ffffff";
     const displayName = member.displayName.length > 20
@@ -94,12 +79,10 @@ async function generateWelcomeCard(member, config, type = "welcome") {
         : member.displayName;
     ctx.fillText(displayName, textX, 130);
 
-    // Servidor y contador
     ctx.font = "18px Sans";
     ctx.fillStyle = "rgba(255,255,255,0.7)";
     ctx.fillText(`${member.guild.name} • Miembro #${member.guild.memberCount}`, textX, 165);
 
-    // Línea decorativa
     ctx.beginPath();
     ctx.moveTo(textX, 90);
     ctx.lineTo(textX + 500, 90);
@@ -111,7 +94,6 @@ async function generateWelcomeCard(member, config, type = "welcome") {
 }
 
 function drawDefaultBackground(ctx, color, type) {
-    // Gradiente oscuro por defecto
     const gradient = ctx.createLinearGradient(0, 0, 800, 250);
     gradient.addColorStop(0, "#0b0b0f");
     gradient.addColorStop(0.5, type === "welcome" ? "#1a0008" : "#0a0a1a");
@@ -119,7 +101,6 @@ function drawDefaultBackground(ctx, color, type) {
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, 800, 250);
 
-    // Patrón de puntos decorativo
     ctx.fillStyle = `${color}15`;
     for (let i = 0; i < 800; i += 30) {
         for (let j = 0; j < 250; j += 30) {
@@ -133,22 +114,28 @@ function drawDefaultBackground(ctx, color, type) {
 module.exports = {
     name: "guildMemberAdd",
     async execute(member) {
+        console.log("🔔 guildMemberAdd disparado para:", member.user.username);
+
         try {
             const config = await GuildConfig.findOne({ guildId: member.guild.id });
+            console.log("📊 Config encontrada:", config ? "SI" : "NO");
+            console.log("📊 Welcome enabled:", config?.welcome?.enabled);
+            console.log("📊 Channel ID:", config?.welcome?.channelId);
 
-            if (!config?.welcome?.enabled || !config?.welcome?.channelId) return;
+            if (!config?.welcome?.enabled || !config?.welcome?.channelId) {
+                console.log("⚠️ Welcome desactivado o sin canal configurado");
+                return;
+            }
 
             const channel = member.guild.channels.cache.get(config.welcome.channelId);
+            console.log("📊 Canal encontrado:", channel ? channel.name : "NO ENCONTRADO");
+
             if (!channel) return;
 
-            // Generar canvas
             const imageBuffer = await generateWelcomeCard(member, config, "welcome");
             const attachment = new AttachmentBuilder(imageBuffer, { name: "welcome.png" });
-
-            // Parsear mensaje personalizado
             const message = parseMessage(config.welcome.message, member, member.guild);
 
-            // Embed con la imagen
             const embed = new EmbedBuilder()
                 .setColor(config.welcome.embedColor || "#ff0033")
                 .setDescription(message)
@@ -157,6 +144,7 @@ module.exports = {
                 .setTimestamp();
 
             await channel.send({ embeds: [embed], files: [attachment] });
+            console.log("✅ Mensaje de bienvenida enviado");
 
         } catch (err) {
             console.error("❌ Error en guildMemberAdd:", err);

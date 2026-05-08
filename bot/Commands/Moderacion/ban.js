@@ -1,44 +1,46 @@
-const {
-    ChatInputCommandInteraction,
-    SlashCommandBuilder,
-    EmbedBuilder,
-    PermissionFlagsBits
-} = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require("discord.js");
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName("ban")
-        .setDescription("Baneare a un usuario que eligas")
-        .addUserOption((option) => option.setName(`target`).setDescription(`Usuario a banear`).setRequired(true))
-        .addStringOption((option) => option.setName(`razon`).setDescription(`Razon del banear`))
-        .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers),
-    /**
-     * 
-     * @param {ChatInputCommandInteraction} interaction 
-     */
+        .setDescription("Banea a un usuario del servidor")
+        .addUserOption(o => o.setName("target").setDescription("Usuario a banear").setRequired(true))
+        .addStringOption(o => o.setName("razon").setDescription("Razón del baneo"))
+        .addIntegerOption(o => o.setName("dias").setDescription("Días de mensajes a eliminar (0-7)").setMinValue(0).setMaxValue(7))
+        .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers),
+
     async execute(interaction, client) {
-        const user = interaction.options.getUser(`target`);
+        const user = interaction.options.getUser("target");
+        const razon = interaction.options.getString("razon") || "Sin razón especificada";
+        const dias = interaction.options.getInteger("dias") || 0;
         const { guild } = interaction;
 
-        let razon = interaction.options.getString(`razon`);
-        const member = await interaction.guild.members.fetch(user.id).catch(console.error)
+        const member = await guild.members.fetch(user.id).catch(() => null);
 
-    if (!razon) razon = "No hay razon";
-    if(user.id === interaction.user.id) return interaction.reply({content: `No puedes banearte a ti mismo`, ephemeral:true});
-    if(user.id === client.user.id) return interaction.reply({content: `No puedes banear a mi`, ephemeral:true});
-    if(member.roles.highest.position >= interaction.member.roles.highest.position) return interaction.reply({content: `No puedes banear a alguien con un rol igual o superior al tuyo`, ephemeral: true});
-    if (!member.kickable) return interaction.reply({content: `No puedo banear a alguien con un rol superior al mio`, ephemeral:true});
+        if (user.id === interaction.user.id) return interaction.reply({ content: "❌ No puedes banearte a ti mismo", ephemeral: true });
+        if (user.id === client.user.id) return interaction.reply({ content: "❌ No puedes banearme a mí", ephemeral: true });
+        if (member) {
+            if (member.roles.highest.position >= interaction.member.roles.highest.position)
+                return interaction.reply({ content: "❌ No puedes banear a alguien con un rol igual o superior al tuyo", ephemeral: true });
+            if (!member.bannable)
+                return interaction.reply({ content: "❌ No tengo permisos para banear a este usuario", ephemeral: true });
+        }
 
-    const embed = new EmbedBuilder()
-    .setAuthor({ name: `${guild.name}`, iconURL: `${guild.iconURL({dinamyc: true}) || "https://media.discordapp.net/attachments/1495109465165402345/1497022407360254143/veido.png?ex=69ec0243&is=69eab0c3&hm=7d9f07f485eed8a5ec2bc5e854d3f2b6a70890ba3437ab4a5957713e28e953ef&=&format=webp&quality=lossless&width=960&height=960"} `})
-    .setTitle(`${user.tag} Ha sido banear del servidor.`)
-    .setColor(`#ff0000`)
-    .setTimestamp()
-    .setThumbnail(`${user.displayAvatarURL({dinamyc: true})}`)
-    .addFields({name: `Razon`, value: `${razon}`});
+        await guild.members.ban(user.id, { deleteMessageSeconds: dias * 86400, reason: razon });
 
-    await member.ban({deleteMessageSeconds: 0, reason: razon}).catch(console.error);
+        const embed = new EmbedBuilder()
+            .setAuthor({ name: guild.name, iconURL: guild.iconURL() })
+            .setTitle("🔨 Usuario Baneado")
+            .setColor("#ff0033")
+            .setThumbnail(user.displayAvatarURL())
+            .addFields(
+                { name: "Usuario", value: `${user.tag} (${user.id})`, inline: true },
+                { name: "Moderador", value: interaction.user.tag, inline: true },
+                { name: "Razón", value: razon },
+                { name: "Mensajes eliminados", value: `${dias} día(s)`, inline: true }
+            )
+            .setTimestamp();
 
-    interaction.reply({embeds: [embed]});
-},
+        interaction.reply({ embeds: [embed] });
+    }
 };

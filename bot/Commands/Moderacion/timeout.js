@@ -1,48 +1,49 @@
-const {
-    ChatInputCommandInteraction,
-    SlashCommandBuilder,
-    EmbedBuilder,
-    PermissionFlagsBits
-} = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require("discord.js");
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName("timeout")
-        .setDescription("timeout a un usuario que eligas")
-        .addUserOption((option) => option.setName(`target`).setDescription(`Usuario a timeout`).setRequired(true))
-        .addIntegerOption((option) => option.setName(`tiempo`).setDescription(`tiempo del timeout en minutos`).setRequired(true))
-        .addStringOption((option) => option.setName(`razon`).setDescription(`Razon del timeout`))
-        .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers),
-    /**
-     * 
-     * @param {ChatInputCommandInteraction} interaction 
-     */
+        .setDescription("Silencia temporalmente a un usuario")
+        .addUserOption(o => o.setName("target").setDescription("Usuario a silenciar").setRequired(true))
+        .addIntegerOption(o => o.setName("tiempo").setDescription("Tiempo en minutos").setRequired(true).setMinValue(1).setMaxValue(40320))
+        .addStringOption(o => o.setName("razon").setDescription("Razón del silencio"))
+        .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
+
     async execute(interaction, client) {
-        const user = interaction.options.getUser(`target`);
-        const tiempo = interaction.options.getInteger(`tiempo`)
+        const user = interaction.options.getUser("target");
+        const tiempo = interaction.options.getInteger("tiempo");
+        const razon = interaction.options.getString("razon") || "Sin razón especificada";
         const { guild } = interaction;
 
-        let razon = interaction.options.getString(`razon`);
-        const member = await interaction.guild.members.fetch(user.id).catch(console.error)
+        const member = await guild.members.fetch(user.id).catch(() => null);
+        if (!member) return interaction.reply({ content: "❌ No encontré ese usuario en el servidor", ephemeral: true });
 
-    if (!razon) razon = "No hay razon";
-    if(user.id === interaction.user.id) return interaction.reply({content: `No puedes timeoutear a ti mismo`, ephemeral:true});
-    if(user.id === client.user.id) return interaction.reply({content: `No puedes timeoutear a mi`, ephemeral:true});
-    if(member.roles.highest.position >= interaction.member.roles.highest.position) return interaction.reply({content: `No puedes timeoutear a alguien con un rol igual o superior al tuyo`, ephemeral: true});
-    if (!member.kickable) return interaction.reply({content: `No puedo timeoutear a alguien con un rol superior al mio`, ephemeral:true});
+        if (user.id === interaction.user.id) return interaction.reply({ content: "❌ No puedes silenciarte a ti mismo", ephemeral: true });
+        if (user.id === client.user.id) return interaction.reply({ content: "❌ No puedes silenciarme a mí", ephemeral: true });
+        if (member.roles.highest.position >= interaction.member.roles.highest.position)
+            return interaction.reply({ content: "❌ No puedes silenciar a alguien con un rol igual o superior al tuyo", ephemeral: true });
 
-    if(tiempo > 100000) return interaction.reply({content: `El tiempo no puede superar los 100.000 minutos`, ephemeral: true})
+        await member.timeout(tiempo * 60 * 1000, razon);
 
-    const embed = new EmbedBuilder()
-    .setAuthor({ name: `${guild.name}`, iconURL: `${guild.iconURL({dinamyc: true}) || "https://media.discordapp.net/attachments/1495109465165402345/1497022407360254143/veido.png?ex=69ec0243&is=69eab0c3&hm=7d9f07f485eed8a5ec2bc5e854d3f2b6a70890ba3437ab4a5957713e28e953ef&=&format=webp&quality=lossless&width=960&height=960"} `})
-    .setTitle(`${user.tag} Ha sido timeouteado del servidor.`)
-    .setColor(`#ff0000`)
-    .setTimestamp()
-    .setThumbnail(`${user.displayAvatarURL({dinamyc: true})}`)
-    .addFields({name: `Razon`, value: `${razon}`, inline: true}, {name: `Tiempo`, value: `${tiempo}`, inline: true});
+        // Formatear tiempo legible
+        const horas = Math.floor(tiempo / 60);
+        const mins = tiempo % 60;
+        const tiempoStr = horas > 0 ? `${horas}h ${mins}m` : `${mins}m`;
 
-    await member.timeout(tiempo * 60 * 1000, razon).catch(console.error);
+        const embed = new EmbedBuilder()
+            .setAuthor({ name: guild.name, iconURL: guild.iconURL() })
+            .setTitle("🔇 Usuario Silenciado")
+            .setColor("#f59e0b")
+            .setThumbnail(user.displayAvatarURL())
+            .addFields(
+                { name: "Usuario", value: `${user.tag} (${user.id})`, inline: true },
+                { name: "Moderador", value: interaction.user.tag, inline: true },
+                { name: "Duración", value: tiempoStr, inline: true },
+                { name: "Expira", value: `<t:${Math.floor((Date.now() + tiempo * 60 * 1000) / 1000)}:R>`, inline: true },
+                { name: "Razón", value: razon }
+            )
+            .setTimestamp();
 
-    interaction.reply({embeds: [embed]});
-},
+        interaction.reply({ embeds: [embed] });
+    }
 };
