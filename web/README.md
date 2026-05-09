@@ -7,7 +7,7 @@ Plataforma tipo SaaS para administrar bots de Discord con dashboard web, sistema
 ## 🌐 Demo
 
 - Frontend: https://veido-dashboard.vercel.app
-- Backend API: https://veido-saas.onrender.com
+- Backend API: https://veido-bot2.onrender.com/
 
 ---
 

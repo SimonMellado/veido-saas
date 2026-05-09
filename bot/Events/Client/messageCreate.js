@@ -2,7 +2,7 @@ const axios = require("axios");
 const User = require("../../../api/models/User");
 const Guild = require("../../../api/models/Guild");
 
-const API = process.env.API_URL || "https://veido-saas.onrender.com";
+const API = process.env.API_URL || "https://veido-bot2.onrender.com/";
 
 module.exports = {
   name: "messageCreate",
