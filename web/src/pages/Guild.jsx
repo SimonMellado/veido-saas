@@ -8,7 +8,7 @@ const SECTIONS = [
   { id: "general",    label: "General",    icon: "⚙️", available: true  },
   { id: "bienvenida", label: "Bienvenida", icon: "👋", available: true  },
   { id: "moderacion", label: "Moderación", icon: "🛡️", available: true  },
-  { id: "musica",     label: "Música",     icon: "🎵", available: false },
+  { id: "musica",     label: "Música",     icon: "🎵", available: true  },
   { id: "niveles",    label: "Niveles",    icon: "⭐", available: false },
   { id: "memes",      label: "Memes",      icon: "😂", available: false },
   { id: "anime",      label: "Anime",      icon: "🌸", available: false },
@@ -30,7 +30,6 @@ const DEFAULT_WELCOME = {
   message: "¡Bienvenido/a {user} a {server}! 🎉 Eres el miembro #{membercount}.",
   backgroundUrl: null, useAvatar: true, embedColor: "#ff0033"
 };
-
 const DEFAULT_FAREWELL = {
   enabled: false, channelId: null,
   message: "👋 {username} ha abandonado {server}. Nos quedamos con {membercount} miembros.",
@@ -38,15 +37,35 @@ const DEFAULT_FAREWELL = {
 };
 
 const MOD_COMMANDS = [
-  { cmd: "/ban",       desc: "Banea a un usuario del servidor",           icon: "🔨", perms: "BanMembers" },
-  { cmd: "/unban",     desc: "Desbanea a un usuario por ID",              icon: "✅", perms: "BanMembers" },
-  { cmd: "/kick",      desc: "Expulsa a un usuario del servidor",         icon: "👢", perms: "KickMembers" },
-  { cmd: "/timeout",   desc: "Silencia temporalmente a un usuario",       icon: "🔇", perms: "ModerateMembers" },
-  { cmd: "/untimeout", desc: "Quita el silencio a un usuario",            icon: "🔊", perms: "ModerateMembers" },
-  { cmd: "/warn",      desc: "Advierte a un usuario con DM automático",   icon: "⚠️", perms: "ModerateMembers" },
-  { cmd: "/userinfo",  desc: "Muestra info detallada de un usuario",      icon: "👤", perms: "Ninguno" },
-  { cmd: "/serverinfo",desc: "Muestra info del servidor",                 icon: "🏠", perms: "Ninguno" },
-  { cmd: "/ping",      desc: "Muestra la latencia del bot",               icon: "🏓", perms: "Ninguno" },
+  { cmd: "/ban",       desc: "Banea a un usuario del servidor",          icon: "🔨", perms: "BanMembers" },
+  { cmd: "/unban",     desc: "Desbanea a un usuario por ID",             icon: "✅", perms: "BanMembers" },
+  { cmd: "/kick",      desc: "Expulsa a un usuario del servidor",        icon: "👢", perms: "KickMembers" },
+  { cmd: "/timeout",   desc: "Silencia temporalmente a un usuario",      icon: "🔇", perms: "ModerateMembers" },
+  { cmd: "/untimeout", desc: "Quita el silencio a un usuario",           icon: "🔊", perms: "ModerateMembers" },
+  { cmd: "/warn",      desc: "Advierte a un usuario con DM automático",  icon: "⚠️", perms: "ModerateMembers" },
+  { cmd: "/userinfo",  desc: "Muestra info detallada de un usuario",     icon: "👤", perms: "Todos" },
+  { cmd: "/serverinfo",desc: "Muestra info del servidor",                icon: "🏠", perms: "Todos" },
+  { cmd: "/ping",      desc: "Muestra la latencia del bot",              icon: "🏓", perms: "Todos" },
+];
+
+const MUSIC_COMMANDS = [
+  { cmd: "/play",       args: "<canción o link>",  desc: "Reproduce desde YouTube, Spotify, SoundCloud",    icon: "▶️" },
+  { cmd: "/nowplaying", args: "",                   desc: "Canción actual con botones de control interactivos", icon: "🎶" },
+  { cmd: "/queue",      args: "[página]",           desc: "Cola con paginación, shuffle y limpiar",          icon: "📋" },
+  { cmd: "/skip",       args: "[posición]",         desc: "Salta la canción o a una posición de la cola",    icon: "⏭️" },
+  { cmd: "/stop",       args: "",                   desc: "Detiene la música y limpia la cola",              icon: "⏹️" },
+  { cmd: "/pause",      args: "",                   desc: "Pausa la música",                                 icon: "⏸️" },
+  { cmd: "/resume",     args: "",                   desc: "Reanuda la música pausada",                       icon: "▶️" },
+  { cmd: "/volume",     args: "<1-100>",            desc: "Ajusta el volumen con barra visual",              icon: "🔊" },
+  { cmd: "/loop",       args: "<modo>",             desc: "Repite canción, cola completa o autoplay",        icon: "🔁" },
+  { cmd: "/seek",       args: "<mm:ss>",            desc: "Salta a un momento específico de la canción",     icon: "⏩" },
+];
+
+const MUSIC_SOURCES = [
+  { name: "YouTube",     icon: "🔴", color: "#ff0000", status: "Activo" },
+  { name: "Spotify",     icon: "🟢", color: "#1db954", status: "Activo" },
+  { name: "SoundCloud",  icon: "🟠", color: "#ff5500", status: "Activo" },
+  { name: "Apple Music", icon: "⚪", color: "#fc3c44", status: "Limitado" },
 ];
 
 function ComingSoon({ label, icon }) {
@@ -58,9 +77,7 @@ function ComingSoon({ label, icon }) {
         <span style={{ width:8, height:8, borderRadius:"50%", background:"#ff0033", display:"inline-block", animation:"pulse 1.5s ease-in-out infinite" }}/>
         <span style={{ color:"#ff0033", fontSize:13, fontWeight:500 }}>Próximamente</span>
       </div>
-      <p style={{ color:"var(--text-secondary,#6b7280)", fontSize:14, maxWidth:300, margin:0 }}>
-        Estamos trabajando en esta sección. Pronto podrás configurar {label.toLowerCase()} desde aquí.
-      </p>
+      <p style={{ color:"var(--text-secondary,#6b7280)", fontSize:14, maxWidth:300, margin:0 }}>Estamos trabajando en esta sección.</p>
     </div>
   );
 }
@@ -69,7 +86,7 @@ function SectionGeneral({ config }) {
   return (
     <div>
       <div className="page-header">
-        {config.icon && <img src={`https://cdn.discordapp.com/icons/${config.guildId}/${config.icon}.png?size=256`} alt={config.name} style={{ width:80, height:80, borderRadius:16, marginBottom:16, border:"3px solid #5865F2" }} />}
+        {config.icon && <img src={`https://cdn.discordapp.com/icons/${config.guildId}/${config.icon}.png?size=256`} alt={config.name} style={{ width:80, height:80, borderRadius:16, marginBottom:16, border:"3px solid #5865F2" }}/>}
         <h1>{config.name}</h1>
         <p className="page-subtitle">ID: {config.guildId}</p>
       </div>
@@ -105,13 +122,10 @@ function SectionBienvenida({ guildId, channels }) {
       const res = await fetch(`${API}/guild/${guildId}/welcome`, { credentials:"include", headers });
       if (!res.ok) return;
       const data = await res.json();
-      setWelcome({ ...DEFAULT_WELCOME, ...(data.welcome || {}) });
-      setFarewell({ ...DEFAULT_FAREWELL, ...(data.farewell || {}) });
-    } catch (err) {
-      console.error("❌ Error cargando config:", err);
-    } finally {
-      setLoading(false);
-    }
+      setWelcome({ ...DEFAULT_WELCOME, ...(data.welcome||{}) });
+      setFarewell({ ...DEFAULT_FAREWELL, ...(data.farewell||{}) });
+    } catch (err) { console.error("❌", err); }
+    finally { setLoading(false); }
   }, [guildId]);
 
   useEffect(() => { loadConfig(); }, [loadConfig]);
@@ -122,13 +136,9 @@ function SectionBienvenida({ guildId, channels }) {
     const headers = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
     try {
-      const res = await fetch(`${API}/guild/${guildId}/welcome`, {
-        method:"POST", credentials:"include", headers,
-        body: JSON.stringify({ welcome, farewell })
-      });
-      if (!res.ok) throw new Error("Error al guardar");
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
+      const res = await fetch(`${API}/guild/${guildId}/welcome`, { method:"POST", credentials:"include", headers, body: JSON.stringify({ welcome, farewell }) });
+      if (!res.ok) throw new Error();
+      setSaved(true); setTimeout(() => setSaved(false), 3000);
     } catch { alert("❌ Error al guardar"); }
     finally { setSaving(false); }
   };
@@ -148,21 +158,16 @@ function SectionBienvenida({ guildId, channels }) {
       </div>
       <div style={{ display:"flex", gap:8, marginBottom:24 }}>
         {["welcome","farewell"].map(t => (
-          <button key={t} onClick={() => setTab(t)} style={{
-            padding:"8px 20px", borderRadius:8, border:"none", cursor:"pointer", fontWeight:500, fontSize:14,
-            background: tab===t ? (t==="welcome" ? "rgba(255,0,51,0.15)" : "rgba(88,101,242,0.15)") : "rgba(255,255,255,0.05)",
-            color: tab===t ? (t==="welcome" ? "#ff0033" : "#5865F2") : "var(--text-secondary,#6b7280)",
-            borderBottom: tab===t ? `2px solid ${t==="welcome" ? "#ff0033" : "#5865F2"}` : "2px solid transparent"
-          }}>{t==="welcome" ? "👋 Bienvenida" : "👋 Despedida"}</button>
+          <button key={t} onClick={() => setTab(t)} style={{ padding:"8px 20px", borderRadius:8, border:"none", cursor:"pointer", fontWeight:500, fontSize:14, background: tab===t ? (t==="welcome" ? "rgba(255,0,51,0.15)" : "rgba(88,101,242,0.15)") : "rgba(255,255,255,0.05)", color: tab===t ? (t==="welcome" ? "#ff0033" : "#5865F2") : "var(--text-secondary,#6b7280)", borderBottom: tab===t ? `2px solid ${t==="welcome" ? "#ff0033" : "#5865F2"}` : "2px solid transparent" }}>
+            {t==="welcome" ? "👋 Bienvenida" : "👋 Despedida"}
+          </button>
         ))}
       </div>
       <div style={{ display:"flex", flexDirection:"column", gap:20, maxWidth:700 }}>
         <div className="card" style={{ flexDirection:"row", justifyContent:"space-between", alignItems:"center" }}>
           <div>
             <p className="guild-name" style={{ margin:0 }}>Activar {tabLabel}</p>
-            <p style={{ color:"var(--text-secondary,#6b7280)", fontSize:13, margin:"4px 0 0" }}>
-              {tab==="welcome" ? "Envía un mensaje cuando alguien entra" : "Envía un mensaje cuando alguien sale"}
-            </p>
+            <p style={{ color:"var(--text-secondary,#6b7280)", fontSize:13, margin:"4px 0 0" }}>{tab==="welcome" ? "Envía un mensaje cuando alguien entra" : "Envía un mensaje cuando alguien sale"}</p>
           </div>
           <div onClick={() => setCfg({ ...cfg, enabled: !cfg.enabled })} style={{ width:48, height:26, borderRadius:13, cursor:"pointer", position:"relative", transition:"background 0.2s", background: cfg.enabled ? accentColor : "rgba(255,255,255,0.1)" }}>
             <div style={{ position:"absolute", top:3, left: cfg.enabled ? 25 : 3, width:20, height:20, borderRadius:"50%", background:"white", transition:"left 0.2s" }}/>
@@ -230,28 +235,70 @@ function SectionModeracion() {
         <h1>🛡️ Moderación</h1>
         <p className="page-subtitle">Comandos de moderación disponibles en tu servidor</p>
       </div>
+      <div style={{ display:"flex", flexDirection:"column", gap:12, maxWidth:700 }}>
+        {MOD_COMMANDS.map(cmd => (
+          <div key={cmd.cmd} className="card" style={{ flexDirection:"row", alignItems:"center", gap:16, padding:"14px 20px" }}>
+            <span style={{ fontSize:28, flexShrink:0 }}>{cmd.icon}</span>
+            <div style={{ flex:1 }}>
+              <p style={{ margin:0, fontFamily:"monospace", fontSize:15, fontWeight:700, color:"#ff0033" }}>{cmd.cmd}</p>
+              <p style={{ margin:"4px 0 0", fontSize:13, color:"var(--text-secondary,#6b7280)" }}>{cmd.desc}</p>
+            </div>
+            <span style={{ flexShrink:0, padding:"4px 10px", borderRadius:20, fontSize:11, fontWeight:500, background: cmd.perms==="Todos" ? "rgba(34,197,94,0.1)" : "rgba(255,0,51,0.1)", color: cmd.perms==="Todos" ? "#4ade80" : "#ff0033", border:`1px solid ${cmd.perms==="Todos" ? "rgba(34,197,94,0.25)" : "rgba(255,0,51,0.25)"}` }}>
+              {cmd.perms}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SectionMusica() {
+  return (
+    <div>
+      <div className="page-header">
+        <h1>🎵 Música</h1>
+        <p className="page-subtitle">Comandos de música con soporte para múltiples plataformas</p>
+      </div>
+
+      {/* Fuentes */}
+      <div className="panel" style={{ marginBottom:32 }}>
+        <h2>Plataformas soportadas</h2>
+        <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
+          {MUSIC_SOURCES.map(s => (
+            <div key={s.name} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 16px", borderRadius:20, background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.08)" }}>
+              <span style={{ fontSize:18 }}>{s.icon}</span>
+              <span style={{ fontSize:14, fontWeight:500, color:"var(--text-primary,#e8eaf0)" }}>{s.name}</span>
+              <span style={{ fontSize:11, padding:"2px 8px", borderRadius:10, background: s.status==="Activo" ? "rgba(34,197,94,0.15)" : "rgba(245,158,11,0.15)", color: s.status==="Activo" ? "#4ade80" : "#fbbf24" }}>{s.status}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Comandos */}
       <div className="panel">
-        <div style={{ display:"flex", flexDirection:"column", gap:12, maxWidth:700 }}>
-          {MOD_COMMANDS.map(cmd => (
-            <div key={cmd.cmd} className="card" style={{ flexDirection:"row", alignItems:"center", gap:16, padding:"14px 20px" }}>
-              <span style={{ fontSize:28, flexShrink:0 }}>{cmd.icon}</span>
+        <h2>Comandos disponibles</h2>
+        <div style={{ display:"flex", flexDirection:"column", gap:10, maxWidth:750 }}>
+          {MUSIC_COMMANDS.map(cmd => (
+            <div key={cmd.cmd} className="card" style={{ flexDirection:"row", alignItems:"center", gap:16, padding:"12px 18px" }}>
+              <span style={{ fontSize:24, flexShrink:0, width:32, textAlign:"center" }}>{cmd.icon}</span>
               <div style={{ flex:1 }}>
-                <p style={{ margin:0, fontFamily:"monospace", fontSize:15, fontWeight:700, color:"#ff0033" }}>{cmd.cmd}</p>
-                <p style={{ margin:"4px 0 0", fontSize:13, color:"var(--text-secondary,#6b7280)" }}>{cmd.desc}</p>
-              </div>
-              <div style={{ flexShrink:0 }}>
-                <span style={{
-                  padding:"4px 10px", borderRadius:20, fontSize:11, fontWeight:500,
-                  background: cmd.perms === "Ninguno" ? "rgba(34,197,94,0.1)" : "rgba(255,0,51,0.1)",
-                  color: cmd.perms === "Ninguno" ? "#4ade80" : "#ff0033",
-                  border: `1px solid ${cmd.perms === "Ninguno" ? "rgba(34,197,94,0.25)" : "rgba(255,0,51,0.25)"}`
-                }}>
-                  {cmd.perms === "Ninguno" ? "Todos" : cmd.perms}
-                </span>
+                <div style={{ display:"flex", alignItems:"baseline", gap:8 }}>
+                  <span style={{ fontFamily:"monospace", fontSize:14, fontWeight:700, color:"#ff0033" }}>{cmd.cmd}</span>
+                  {cmd.args && <span style={{ fontFamily:"monospace", fontSize:12, color:"var(--text-secondary,#6b7280)" }}>{cmd.args}</span>}
+                </div>
+                <p style={{ margin:"3px 0 0", fontSize:13, color:"var(--text-secondary,#6b7280)" }}>{cmd.desc}</p>
               </div>
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Tip */}
+      <div style={{ marginTop:24, padding:"14px 18px", borderRadius:10, background:"rgba(255,0,51,0.05)", border:"1px solid rgba(255,0,51,0.15)", maxWidth:750 }}>
+        <p style={{ margin:0, fontSize:13, color:"var(--text-secondary,#6b7280)" }}>
+          💡 <strong style={{ color:"var(--text-primary,#e8eaf0)" }}>Tip:</strong> Usa <code style={{ background:"rgba(255,255,255,0.08)", padding:"1px 6px", borderRadius:4, fontSize:12 }}>/nowplaying</code> para ver la canción actual con botones interactivos de pausa, skip, stop y cola sin necesidad de escribir más comandos.
+        </p>
       </div>
     </div>
   );
@@ -281,6 +328,7 @@ function Guild({ user }) {
   if (error||!config) return <div className="app"><div className="main"><div className="empty-state"><p>No se pudo cargar la configuración.</p><button className="btn-discord" onClick={() => navigate("/dashboard")} style={{ marginTop:16 }}>Volver</button></div></div></div>;
 
   const activeData = SECTIONS.find(s => s.id === activeSection);
+  const availableSections = ["general","bienvenida","moderacion","musica"];
 
   return (
     <>
@@ -311,10 +359,11 @@ function Guild({ user }) {
           )}
         </aside>
         <main className="main">
-          {activeSection==="general" && <SectionGeneral config={config} />}
+          {activeSection==="general"    && <SectionGeneral config={config} />}
           {activeSection==="bienvenida" && <SectionBienvenida guildId={id} channels={channels} />}
           {activeSection==="moderacion" && <SectionModeracion />}
-          {!["general","bienvenida","moderacion"].includes(activeSection) && <ComingSoon label={activeData.label} icon={activeData.icon} />}
+          {activeSection==="musica"     && <SectionMusica />}
+          {!availableSections.includes(activeSection) && <ComingSoon label={activeData.label} icon={activeData.icon} />}
         </main>
       </div>
     </>
