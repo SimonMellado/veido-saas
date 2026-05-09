@@ -17,17 +17,24 @@ app.use(cors({
 
 app.use(express.json());
 
-app.use(session({
-  secret: process.env.SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false,
-  store: MongoStore.create({ mongoUrl: process.env.MONGO_URL }),
-  cookie: {
-    maxAge: 1000 * 60 * 60 * 24,
-    secure: true,
-    sameSite: "none"
-  }
-}));
+const loginAttempts = new Map();
+
+app.use("/auth/discord/callback", (req, res, next) => {
+    const ip = req.ip;
+    const now = Date.now();
+    const attempts = loginAttempts.get(ip) || [];
+    
+    // Limpiar intentos viejos (más de 1 minuto)
+    const recent = attempts.filter(t => now - t < 60000);
+    
+    if (recent.length >= 3) {
+        return res.status(429).send("Demasiados intentos. Espera 1 minuto.");
+    }
+    
+    recent.push(now);
+    loginAttempts.set(ip, recent);
+    next();
+});
 
 function requireAuth(req, res, next) {
   const authHeader = req.headers.authorization;
