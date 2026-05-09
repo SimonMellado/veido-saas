@@ -42,6 +42,22 @@ function requireAuth(req, res, next) {
   return res.status(401).json({ error: "No autenticado" });
 }
 
+// ✅ Retry con backoff exponencial para evitar rate limiting de Discord
+const fetchWithRetry = async (fn, retries = 3, delay = 2000) => {
+  try {
+    return await fn();
+  } catch (err) {
+    if (err.response?.status === 429 && retries > 0) {
+      const retryAfter = (err.response?.data?.retry_after || 30) * 1000;
+      const waitTime = Math.max(retryAfter, delay);
+      console.log(`⏳ Rate limited por Discord, esperando ${waitTime}ms... (${retries} intentos restantes)`);
+      await new Promise(r => setTimeout(r, waitTime));
+      return fetchWithRetry(fn, retries - 1, delay * 2);
+    }
+    throw err;
+  }
+};
+
 // ──────────────── AUTH ────────────────
 
 app.get("/auth/login", (req, res) => {
@@ -58,23 +74,27 @@ app.get("/auth/discord/callback", async (req, res) => {
   if (!code) return res.status(400).send("Falta el código");
 
   try {
-    const tokenResponse = await axios.post(
-      "https://discord.com/api/oauth2/token",
-      new URLSearchParams({
-        client_id: process.env.CLIENT_ID,
-        client_secret: process.env.CLIENT_SECRET,
-        grant_type: "authorization_code",
-        code,
-        redirect_uri: process.env.REDIRECT_URI
-      }).toString(),
-      { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+    const tokenResponse = await fetchWithRetry(() =>
+      axios.post(
+        "https://discord.com/api/oauth2/token",
+        new URLSearchParams({
+          client_id: process.env.CLIENT_ID,
+          client_secret: process.env.CLIENT_SECRET,
+          grant_type: "authorization_code",
+          code,
+          redirect_uri: process.env.REDIRECT_URI
+        }).toString(),
+        { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+      )
     );
 
     const accessToken = tokenResponse.data.access_token;
 
-    const userResponse = await axios.get("https://discord.com/api/users/@me", {
-      headers: { Authorization: `Bearer ${accessToken}` }
-    });
+    const userResponse = await fetchWithRetry(() =>
+      axios.get("https://discord.com/api/users/@me", {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      })
+    );
 
     req.session.user = userResponse.data;
     req.session.accessToken = accessToken;
@@ -92,6 +112,9 @@ app.get("/auth/discord/callback", async (req, res) => {
 
   } catch (err) {
     console.error("🔥 Error en OAuth:", err.response?.data || err.message);
+    if (err.response?.status === 429) {
+      return res.status(503).send("Servidor ocupado por rate limit, intenta en 30 segundos");
+    }
     res.status(500).send("Error en autenticación");
   }
 });
@@ -110,9 +133,11 @@ app.get("/user", (req, res) => {
 
 app.get("/guilds", requireAuth, async (req, res) => {
   try {
-    const response = await axios.get("https://discord.com/api/users/@me/guilds", {
-      headers: { Authorization: `Bearer ${req.accessToken}` }
-    });
+    const response = await fetchWithRetry(() =>
+      axios.get("https://discord.com/api/users/@me/guilds", {
+        headers: { Authorization: `Bearer ${req.accessToken}` }
+      })
+    );
     const adminGuilds = response.data.filter(
       g => (Number.parseInt(g.permissions) & 0x8) === 0x8
     );
@@ -125,21 +150,24 @@ app.get("/guilds", requireAuth, async (req, res) => {
 
 app.get("/guild/:id", requireAuth, async (req, res) => {
   try {
-    const guildsResponse = await axios.get("https://discord.com/api/users/@me/guilds", {
-      headers: { Authorization: `Bearer ${req.accessToken}` }
-    });
+    const guildsResponse = await fetchWithRetry(() =>
+      axios.get("https://discord.com/api/users/@me/guilds", {
+        headers: { Authorization: `Bearer ${req.accessToken}` }
+      })
+    );
+
     const guild = guildsResponse.data.find(g => g.id === req.params.id);
     const isAdmin = guild && (Number.parseInt(guild.permissions) & 0x8) === 0x8;
     if (!isAdmin) return res.status(403).json({ error: "Sin permisos" });
 
-    // Obtener canales del servidor via Discord API con el bot token
     let channels = [];
     try {
-      const channelsResponse = await axios.get(
-        `https://discord.com/api/guilds/${req.params.id}/channels`,
-        { headers: { Authorization: `Bot ${process.env.TOKEN}` } }
+      const channelsResponse = await fetchWithRetry(() =>
+        axios.get(
+          `https://discord.com/api/guilds/${req.params.id}/channels`,
+          { headers: { Authorization: `Bot ${process.env.TOKEN}` } }
+        )
       );
-      // Solo canales de texto
       channels = channelsResponse.data
         .filter(ch => ch.type === 0)
         .map(ch => ({ id: ch.id, name: ch.name }))
