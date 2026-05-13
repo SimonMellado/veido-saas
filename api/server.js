@@ -5,6 +5,7 @@ const axios = require("axios");
 const session = require("express-session");
 const MongoStore = require("connect-mongo");
 const mongoose = require("mongoose");
+const loginAttempts = new Map();
 
 const app = express();
 

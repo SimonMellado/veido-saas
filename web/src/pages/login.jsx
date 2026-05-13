@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import PropTypes from "prop-types";
 
 const API = process.env.REACT_APP_API;
@@ -10,19 +9,8 @@ function Login({ fetchUser }) {
       alert("Error: API no configurada");
       return;
     }
-
-    console.log("🚀 Redirigiendo a Discord OAuth...");
     window.location.href = `${API}/auth/login`;
   };
-
-  useEffect(() => {
-    // 🔒 FIX: evitar crash si fetchUser no es función
-    if (typeof fetchUser === "function") {
-      fetchUser();
-    } else {
-      console.error("❌ fetchUser no es una función:", fetchUser);
-    }
-  }, [fetchUser]);
 
   return (
     <div className="login-page">
@@ -38,21 +26,21 @@ function Login({ fetchUser }) {
         </p>
 
         <button className="btn-discord" onClick={handleLogin}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057.1 18.08.112 18.1.132 18.116a19.916 19.916 0 0 0 5.993 3.029.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.029.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/>
+          </svg>
           Iniciar sesión con Discord
         </button>
+
+        <p style={{ marginTop: 16, fontSize: 12, color: "var(--text-secondary, #6b7280)", textAlign: "center" }}>
+          Una vez que inicies sesión, no tendrás que volver a hacerlo
+        </p>
       </div>
     </div>
   );
 }
 
-// 🔒 FIX: no romper si no llega prop
-Login.propTypes = {
-  fetchUser: PropTypes.func
-};
-
-// 🔒 FIX: fallback automático
-Login.defaultProps = {
-  fetchUser: () => {}
-};
+Login.propTypes = { fetchUser: PropTypes.func };
+Login.defaultProps = { fetchUser: () => {} };
 
 export default Login;

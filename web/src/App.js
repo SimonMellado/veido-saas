@@ -6,63 +6,73 @@ import Dashboard from "./pages/Dashboard";
 import Guild from "./pages/Guild";
 
 const API = process.env.REACT_APP_API;
+const SESSION_KEY = "veido_user";
+const TOKEN_KEY = "discord_token";
 
 function App() {
   const [user, setUser] = useState(undefined);
 
   const fetchUser = useCallback(async (retries = 3) => {
-    if (!API) {
-      console.error("❌ REACT_APP_API no está definida");
-      setUser(null);
-      return;
-    }
+    if (!API) { setUser(null); return; }
 
-    // PASO 1: Leer usuario desde ?user= en la URL (viene del redirect OAuth)
+    // 1. Leer desde URL (viene del redirect OAuth)
     const params = new URLSearchParams(window.location.search);
     const userParam = params.get("user");
-
     if (userParam) {
       try {
         const userData = JSON.parse(decodeURIComponent(userParam));
-        if (userData && userData.id) {
-          console.log("✅ Usuario recibido desde URL:", userData.username);
-          if (userData.token) {
-            localStorage.setItem("discord_token", userData.token);
-          }
+        if (userData?.id) {
+          if (userData.token) localStorage.setItem(TOKEN_KEY, userData.token);
           const { token, ...userWithoutToken } = userData;
+          // Guardar sesión en localStorage para no tener que loguearse siempre
+          localStorage.setItem(SESSION_KEY, JSON.stringify(userWithoutToken));
           setUser(userWithoutToken);
           window.history.replaceState({}, "", "/dashboard");
           return;
         }
-      } catch (e) {
-        console.error("❌ Error parseando user param:", e);
-      }
+      } catch {}
     }
 
-    // PASO 2: Intentar recuperar sesión con token guardado
-    const savedToken = localStorage.getItem("discord_token");
-    if (savedToken) {
+    // 2. Recuperar sesión guardada en localStorage
+    const savedSession = localStorage.getItem(SESSION_KEY);
+    const savedToken = localStorage.getItem(TOKEN_KEY);
+
+    if (savedSession && savedToken) {
       try {
-        const res = await fetch(`${API}/user`, {
-          credentials: "include",
-          headers: { "Authorization": `Bearer ${savedToken}` }
-        });
-        const data = await res.json();
-        if (data && data.id) {
-          console.log("✅ Sesión recuperada:", data.username);
-          setUser(data);
-          return;
+        const userData = JSON.parse(savedSession);
+        if (userData?.id) {
+          // Verificar que el token sigue siendo válido
+          const res = await fetch(`${API}/user`, {
+            credentials: "include",
+            headers: { "Authorization": `Bearer ${savedToken}` }
+          });
+          const data = await res.json();
+          if (data?.id) {
+            // Actualizar datos frescos del usuario
+            localStorage.setItem(SESSION_KEY, JSON.stringify(data));
+            setUser(data);
+            return;
+          } else {
+            // Token expirado, usar datos guardados igualmente
+            setUser(userData);
+            return;
+          }
         }
       } catch {
-        localStorage.removeItem("discord_token");
+        // Si falla la verificación usar datos guardados
+        try {
+          const userData = JSON.parse(savedSession);
+          if (userData?.id) { setUser(userData); return; }
+        } catch {}
       }
     }
 
-    // PASO 3: Consultar /user normalmente
+    // 3. Consultar API normalmente
     try {
       const res = await fetch(`${API}/user`, { credentials: "include" });
       const data = await res.json();
-      if (data && data.id) {
+      if (data?.id) {
+        localStorage.setItem(SESSION_KEY, JSON.stringify(data));
         setUser(data);
       } else if (retries > 0) {
         setTimeout(() => fetchUser(retries - 1), 800);
@@ -78,12 +88,15 @@ function App() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    fetchUser();
-  }, [fetchUser]);
+  useEffect(() => { fetchUser(); }, [fetchUser]);
 
   const handleSetUser = (userData) => {
-    if (!userData) localStorage.removeItem("discord_token");
+    if (!userData) {
+      localStorage.removeItem(SESSION_KEY);
+      localStorage.removeItem(TOKEN_KEY);
+    } else {
+      localStorage.setItem(SESSION_KEY, JSON.stringify(userData));
+    }
     setUser(userData);
   };
 
@@ -100,7 +113,9 @@ function App() {
       <Routes>
         <Route
           path="/login"
-          element={!user ? <Login /> : <Navigate to="/dashboard" replace />}
+          element={!user
+            ? <Login fetchUser={fetchUser} />
+            : <Navigate to="/dashboard" replace />}
         />
         <Route
           path="/dashboard"
