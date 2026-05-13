@@ -7,6 +7,9 @@ const MongoStore = require("connect-mongo");
 const mongoose = require("mongoose");
 const loginAttempts = new Map();
 
+const autorolesRoutes = require("./routes/autorolesRoutes");
+app.use("/guild", autorolesRoutes);
+
 const app = express();
 
 app.set("trust proxy", 1);
