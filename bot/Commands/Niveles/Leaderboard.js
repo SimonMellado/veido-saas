@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
-const UserLevel = require("../../models/UserLevel");
+const UserLevel = require("../../models/Userlevel");
 const { xpProgress } = require("./levelUtils");
 
 module.exports = {

@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, AttachmentBuilder } = require("discord.js");
 const { createCanvas, loadImage } = require("canvas");
-const UserLevel = require("../../models/UserLevel");
+const UserLevel = require("../../models/Userlevel");
 const { xpProgress } = require("./levelUtils");
 
 module.exports = {
