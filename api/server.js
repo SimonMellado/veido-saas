@@ -5,10 +5,6 @@ const axios = require("axios");
 const session = require("express-session");
 const MongoStore = require("connect-mongo");
 const mongoose = require("mongoose");
-const loginAttempts = new Map();
-
-const autorolesRoutes = require("./routes/autorolesRoutes");
-app.use("/guild", autorolesRoutes);
 
 const app = express();
 
@@ -33,9 +29,21 @@ app.use(session({
   }
 }));
 
+// ✅ Rate limit por IP para evitar abusos
+const loginAttempts = new Map();
+app.use("/auth/discord/callback", (req, res, next) => {
+  const ip = req.ip;
+  const now = Date.now();
+  const attempts = (loginAttempts.get(ip) || []).filter(t => now - t < 60000);
+  if (attempts.length >= 3) return res.status(429).send("Demasiados intentos. Espera 1 minuto.");
+  attempts.push(now);
+  loginAttempts.set(ip, attempts);
+  next();
+});
+
 function requireAuth(req, res, next) {
   const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith("Bearer ")) {
+  if (authHeader?.startsWith("Bearer ")) {
     req.accessToken = authHeader.split(" ")[1];
     return next();
   }
@@ -46,15 +54,14 @@ function requireAuth(req, res, next) {
   return res.status(401).json({ error: "No autenticado" });
 }
 
-// ✅ Retry con backoff exponencial para evitar rate limiting de Discord
+// ✅ Retry con backoff exponencial
 const fetchWithRetry = async (fn, retries = 3, delay = 2000) => {
   try {
     return await fn();
   } catch (err) {
     if (err.response?.status === 429 && retries > 0) {
-      const retryAfter = (err.response?.data?.retry_after || 30) * 1000;
-      const waitTime = Math.max(retryAfter, delay);
-      console.log(`⏳ Rate limited por Discord, esperando ${waitTime}ms... (${retries} intentos restantes)`);
+      const waitTime = Math.max((err.response?.data?.retry_after || 30) * 1000, delay);
+      console.log(`⏳ Rate limited, esperando ${waitTime}ms...`);
       await new Promise(r => setTimeout(r, waitTime));
       return fetchWithRetry(fn, retries - 1, delay * 2);
     }
@@ -116,16 +123,14 @@ app.get("/auth/discord/callback", async (req, res) => {
 
   } catch (err) {
     console.error("🔥 Error en OAuth:", err.response?.data || err.message);
-    if (err.response?.status === 429) {
-      return res.status(503).send("Servidor ocupado por rate limit, intenta en 30 segundos");
-    }
+    if (err.response?.status === 429) return res.status(503).send("Rate limit activo, intenta en 30 segundos");
     res.status(500).send("Error en autenticación");
   }
 });
 
 app.get("/auth/logout", (req, res) => {
   req.session.destroy(() => {
-    res.clearCookie("connect.sid").json({ message: "Sesión cerrada correctamente" });
+    res.clearCookie("connect.sid").json({ message: "Sesión cerrada" });
   });
 });
 
@@ -147,7 +152,7 @@ app.get("/guilds", requireAuth, async (req, res) => {
     );
     res.json(adminGuilds);
   } catch (err) {
-    console.error("🔥 Error cargando servidores:", err.message);
+    console.error("🔥 Error guilds:", err.message);
     res.status(500).json([]);
   }
 });
@@ -166,19 +171,16 @@ app.get("/guild/:id", requireAuth, async (req, res) => {
 
     let channels = [];
     try {
-      const channelsResponse = await fetchWithRetry(() =>
-        axios.get(
-          `https://discord.com/api/guilds/${req.params.id}/channels`,
-          { headers: { Authorization: `Bot ${process.env.TOKEN}` } }
-        )
+      const channelsRes = await fetchWithRetry(() =>
+        axios.get(`https://discord.com/api/guilds/${req.params.id}/channels`, {
+          headers: { Authorization: `Bot ${process.env.TOKEN}` }
+        })
       );
-      channels = channelsResponse.data
+      channels = channelsRes.data
         .filter(ch => ch.type === 0)
         .map(ch => ({ id: ch.id, name: ch.name }))
         .sort((a, b) => a.name.localeCompare(b.name));
-    } catch {
-      channels = [];
-    }
+    } catch { channels = []; }
 
     res.json({
       guildId: req.params.id,
@@ -193,16 +195,17 @@ app.get("/guild/:id", requireAuth, async (req, res) => {
   }
 });
 
-// ──────────────── RUTAS DE BIENVENIDA ────────────────
+// ──────────────── RUTAS DE MÓDULOS ────────────────
 
 const welcomeRoutes = require("./routes/welcomeRoutes");
+const autorolesRoutes = require("./routes/autorolesRoutes");
+
 app.use("/guild", welcomeRoutes);
+app.use("/guild", autorolesRoutes);
 
 // ──────────────── HEALTH CHECK ────────────────
 
-app.get("/", (req, res) => {
-  res.json({ status: "API running 🚀" });
-});
+app.get("/", (req, res) => res.json({ status: "API running 🚀" }));
 
 // ──────────────── ARRANQUE ────────────────
 
@@ -211,11 +214,9 @@ const PORT = process.env.PORT || 3001;
 mongoose.connect(process.env.MONGO_URL)
   .then(() => {
     console.log("✅ Connected to MongoDB successfully!");
-    app.listen(PORT, () => {
-      console.log(`🚀 Server is running on port ${PORT}`);
-    });
+    app.listen(PORT, () => console.log(`🚀 Server is running on port ${PORT}`));
   })
-  .catch((err) => {
+  .catch(err => {
     console.error("❌ MongoDB connection error:", err);
     process.exit(1);
   });
